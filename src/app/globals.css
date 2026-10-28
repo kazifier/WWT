@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #070d10;
+  --color-ink-900: #0b1418;
+  --color-ink-850: #0f1a20;
+  --color-ink-800: #132028;
+  --color-ink-700: #1c2d36;
+  --color-ink-600: #2a4049;
+  --color-line: #1e323b;
+  --color-mist-400: #7f9aa6;
+  --color-mist-300: #a5bcc6;
+  --color-mist-200: #cfdde3;
+  --color-teal-500: #16b0a0;
+  --color-teal-400: #2ccbb8;
+  --color-teal-300: #6fe0d1;
+  --color-amber-l: #e0a94a;
+  --color-rust: #d2703f;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+html,
+body {
+  background: #070d10;
+  color: #cfdde3;
+}
+
+body {
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #16b0a0;
+  color: #070d10;
+}
+
+table.grid-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+table.grid-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #0f1a20;
+  border-bottom: 1px solid #1e323b;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: #7f9aa6;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+table.grid-table td {
+  border-bottom: 1px solid #16252c;
+  padding: 7px 10px;
+  font-size: 12px;
+  vertical-align: top;
+}
+
+table.grid-table tbody tr:hover td {
+  background: #0d181d;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+.scroll-x::-webkit-scrollbar {
+  height: 8px;
+}
+.scroll-x::-webkit-scrollbar-thumb {
+  background: #2a4049;
+  border-radius: 4px;
+}
+
+.card {
+  background: linear-gradient(180deg, #0f1a20 0%, #0b1418 100%);
+  border: 1px solid #1e323b;
+  border-radius: 10px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}

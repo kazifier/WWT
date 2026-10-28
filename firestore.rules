@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Firestore rules for the B047 WWT dossier.
+// Documents and comments are readable by any signed-in user and writable only
+// by signed-in users, with fields the client must not control pinned.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /b047_documents/{docId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 200
+        && request.resource.data.size is number
+        && request.resource.data.size <= 104857600
+        && request.resource.data.url is string;
+      allow update, delete: if false; // metadata is append-only for audit
+    }
+
+    match /b047_comments/{commentId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.author is string
+        && request.resource.data.author.size() <= 80
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 4000
+        && request.resource.data.target is string;
+      allow update, delete: if false;
+    }
+
+    match /b047_scenarios/{scenarioId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

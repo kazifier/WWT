@@ -13,6 +13,7 @@ const links = [
   { href: "/mto", label: "BOM / MTO" },
   { href: "/procurement", label: "Procurement" },
   { href: "/estimate", label: "Estimate" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/options", label: "Options" },
   { href: "/model", label: "Model & drawings" },
   { href: "/assistant", label: "AI assistant" },

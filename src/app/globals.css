@@ -110,17 +110,22 @@ table.grid-table tbody tr:hover td {
  * `data-view` is set on <html> by ViewModeProvider; internal is the default so
  * nothing is hidden until the reader deliberately switches to the client view.
  */
-html[data-view="external"] [data-commercial] {
+/*
+ * The selector is deliberately not anchored on <html>: the pricing sheet turns
+ * its own subtree off with a local data-view="external" wrapper, so the two
+ * switches — client view in the header, manual pricing on the page — compose.
+ */
+[data-view="external"] [data-commercial] {
   display: none !important;
 }
 
-html[data-view="external"] [data-commercial-inline] {
+[data-view="external"] [data-commercial-inline] {
   visibility: hidden;
 }
 
 /* Print a copy for a client without accidentally carrying the cost columns. */
 @media print {
-  html[data-view="external"] [data-commercial] {
+  [data-view="external"] [data-commercial] {
     display: none !important;
   }
 }

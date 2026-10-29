@@ -5,10 +5,15 @@
  * an optional text callout. Visibility is controlled through DimContext so the
  * same primitives can be reused by the overall plant model and the single-item
  * viewer without threading props through every geometry component.
+ *
+ * Labels are rendered with drei's <Html>, which portals the DOM node into an
+ * overlay above the canvas. A plain <div> cannot be a child of <Canvas>: the
+ * react-three-fiber reconciler only knows three.js objects and throws on DOM
+ * elements, which took the whole /model page down.
  */
 
-import { createContext, useContext, useMemo, type ReactNode, useEffect, useRef, useState } from "react";
-import { useThree } from "@react-three/fiber";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 
 export const DIM_COLOR = "#e0a94a";
@@ -60,14 +65,12 @@ export function Dim({
       <DimLine a={from} b={to} />
       <DimLine a={[from[0] + nx, from[1], from[2] + nz]} b={[from[0] - nx, from[1], from[2] - nz]} />
       <DimLine a={[to[0] + nx, to[1], to[2] + nz]} b={[to[0] - nx, to[1], to[2] - nz]} />
-      {text && (
-        <DimLabel position={mid}>{label}</DimLabel>
-      )}
+      {text && <DimLabel position={mid}>{label}</DimLabel>}
     </group>
   );
 }
 
-/** Renders a label at a 3D position using CSS projection (no drei Html). */
+/** Renders a label at a 3D position as a DOM overlay inside the canvas. */
 export function DimLabel({
   position,
   children,
@@ -75,64 +78,14 @@ export function DimLabel({
   position: [number, number, number];
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState<React.CSSProperties>({});
-
-  useEffect(() => {
-    const update = () => {
-      if (!ref.current) return;
-      const project = (window as unknown as { __project3D?: (pos: [number, number, number]) => [number, number, boolean] }).__project3D;
-      if (project) {
-        const [sx, sy, visible] = project(position);
-        if (!visible) { ref.current.style.display = "none"; return; }
-        ref.current.style.display = "";
-        ref.current.style.left = `${sx}px`;
-        ref.current.style.top = `${sy}px`;
-      }
-    };
-    const id = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(id);
-  }, [position]);
-
   return (
-    <div
-      ref={ref}
-      style={{
-        position: "fixed",
-        pointerEvents: "none",
-        zIndex: 50,
-        ...style,
-      }}
-      className="whitespace-nowrap rounded border border-amber-l/50 bg-ink-950/90 px-1.5 py-0.5 font-mono text-[10.5px] text-amber-l"
-    >
-      {children}
-    </div>
+    <Html position={position} center zIndexRange={[30, 0]} style={{ pointerEvents: "none" }}>
+      <div className="whitespace-nowrap rounded border border-amber-l/50 bg-ink-950/90 px-1.5 py-0.5 font-mono text-[10.5px] text-amber-l">
+        {children}
+      </div>
+    </Html>
   );
 }
-
-/** Bridge component that exposes camera projection to DOM overlays. */
-function ProjectionBridge() {
-  const { camera, gl } = useThree();
-  useEffect(() => {
-    const project = (v: [number, number, number]): [number, number, boolean] => {
-      const v4 = new THREE.Vector4(v[0], v[1], v[2], 1);
-      v4.applyMatrix4(camera.projectionMatrix);
-      v4.applyMatrix4(camera.matrixWorldInverse);
-      const w = gl.domElement.width;
-      const h = gl.domElement.height;
-      const visible = v4.z < 1 && v4.z > -1 && v4.w > 0;
-      const sx = (v4.x / v4.w) * w / 2 + w / 2;
-      const sy = -(v4.y / v4.w) * h / 2 + h / 2;
-      return [sx, sy, visible];
-    };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__project3D = project;
-    return () => { (window as any).__project3D = undefined; };
-  }, [camera, gl]);
-  return null;
-}
-
-export { ProjectionBridge };
 
 /** A closed rectangle of dimension lines on the ground plane (plot outline). */
 export function GroundRect({
@@ -148,7 +101,7 @@ export function GroundRect({
   d: number;
   color?: string;
 }) {
-  const points = useMemo(() => {
+  const geom = useMemo(() => {
     const x0 = x - w / 2;
     const x1 = x + w / 2;
     const z0 = z - d / 2;
@@ -159,11 +112,10 @@ export function GroundRect({
     push([x1, 0.04, z0], [x1, 0.04, z1]);
     push([x1, 0.04, z1], [x0, 0.04, z1]);
     push([x0, 0.04, z1], [x0, 0.04, z0]);
-    return seg;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    return g;
   }, [x, z, w, d]);
-
-  const geom = new THREE.BufferGeometry();
-  geom.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
 
   return (
     <lineSegments geometry={geom}>

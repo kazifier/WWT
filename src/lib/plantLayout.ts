@@ -16,7 +16,6 @@ export type PartKind =
   | "basin"
   | "clarifier"
   | "rack"
-  | "building"
   | "rack-frame"
   | "pump"
   | "mixer"
@@ -25,7 +24,15 @@ export type PartKind =
   | "electrical"
   | "pipe-rack"
   | "cable-tray"
-  | "lightning";
+  | "lightning"
+  | "control-panel"
+  | "local-control-panel"
+  | "instrument-panel"
+  | "pipe-rack"
+  | "pipe-frame"
+  | "insulation"
+  | "painting"
+  | "building";
 export type Zone = "Zone 0" | "Zone 1" | "Zone 2" | "Unclassified";
 
 export interface PlantPart {
@@ -73,6 +80,12 @@ export const partColors: Record<PartKind, string> = {
   "pipe-rack": "#7f9aa6",
   "cable-tray": "#7f9aa6",
   lightning: "#d2703f",
+  "control-panel": "#2d5a70",
+  "local-control-panel": "#2d5a70",
+  "instrument-panel": "#2d5a70",
+  "pipe-frame": "#425e6a",
+  insulation: "#a0a0a0",
+  painting: "#f5f5f5",
 };
 
 /** Plot U9 envelope: 150 m × 90 m. */

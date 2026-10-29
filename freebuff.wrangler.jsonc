@@ -40,6 +40,11 @@
       {
         "name": "NEXT_TAG_CACHE_DO_SHARDED",
         "class_name": "DOShardedTagCache"
+      },
+      {
+        "name": "REALTIME",
+        "class_name": "FreebuffRealtime",
+        "script_name": "freebuff-sites-realtime-local"
       }
     ]
   },

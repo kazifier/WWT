@@ -1,23 +1,20 @@
-"use client";
+/** Equipment Viewer for B047 WWT Facility
 
-/**
- * Single-item 3D viewer.
- *
- * Every item is rebuilt from its own length, width, height and diameter, and
- * the dimension callouts are generated from those same numbers — so the
- * drawing cannot drift from the geometry it describes.
+ * Single-item 3D viewer displaying equipment from the equipment register.
+ * Each geometry is built from dimensions in the PlantPart interface.
+ * The drawing includes dimension callouts (Ø, width, depth, height) and
+ * zone color coding from the hazardous area classification.
  */
 
-import { useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Edges } from "@react-three/drei";
 import * as THREE from "three";
 import { zoneColor, type PlantPart } from "@/lib/plantLayout";
-import { Dim, DimContext, DimLabel, ProjectionBridge } from "@/components/Dim3";
-
-/* ------------------------------------------------------------------ */
-/* geometry per item type                                              */
-/* ------------------------------------------------------------------ */
+import { Dim, DimContext } from "@/components/Dim3";
+import { CanvasBoundary } from "@/components/CanvasBoundary";
 
 export function Tank({ p }: { p: PlantPart }) {
   return (
@@ -52,7 +49,7 @@ export function Basin({ p }: { p: PlantPart }) {
         <meshStandardMaterial color="#20343d" />
       </mesh>
       {/* baffles so a basin reads as a basin, not a solid block */}
-      {[-1, 0, 1].map((i) => (
+      {[0, 1, 2].map((i) => (
         <mesh key={i} position={[(i * p.w) / 4, p.h / 2, 0]}>
           <boxGeometry args={[0.15, p.h * 0.8, p.d]} />
           <meshStandardMaterial color="#3d5a66" />
@@ -124,21 +121,21 @@ export function RackFrame({ p }: { p: PlantPart }) {
         <boxGeometry args={[p.w, 0.4, p.d]} />
         <meshStandardMaterial color="#20343d" />
       </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[0, p.h / 2, (s * p.d) / 2]}>
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[0, p.h / 2, (s * p.d) / 2]} >
           <boxGeometry args={[p.w, p.h, 0.25]} />
           <meshStandardMaterial color={p.color} metalness={0.4} roughness={0.5} transparent opacity={0.75} />
         </mesh>
       ))}
-      {[-1, 1].map((sx) =>
+      {[1, -1].map((sx) =>
         [-1, 1].map((sz) => (
           <mesh key={`${sx}${sz}`} position={[(sx * p.w) / 2, p.h / 2, (sz * p.d) / 2]}>
             <boxGeometry args={[0.3, p.h, 0.3]} />
             <meshStandardMaterial color="#425e6a" metalness={0.5} />
           </mesh>
-        )),
+        ))
       )}
-      {[-1, 0, 1].map((i) => (
+      {[0, 1, -1].map((i) => (
         <mesh key={i} position={[(i * p.w) / 2.5, p.h + 0.2, 0]}>
           <boxGeometry args={[0.3, 0.3, p.d]} />
           <meshStandardMaterial color="#425e6a" metalness={0.5} />
@@ -167,7 +164,7 @@ export function Pump({ p }: { p: PlantPart }) {
       {/* motor end */}
       <mesh position={[p.w * 1.1, 0.35, 0]} castShadow>
         <cylinderGeometry args={[p.w * 0.5, p.w * 0.5, p.d * 0.8, 32]} />
-        <meshStandardMaterial color={"#6fe0d1"} metalness={0.3} roughness={0.7} />
+        <meshStandardMaterial color="#6fe0d1" metalness={0.3} roughness={0.7} />
       </mesh>
       {/* coupling */}
       <mesh position={[p.w * 0.55, 0.35, 0]}>
@@ -198,7 +195,7 @@ export function Mixer({ p }: { p: PlantPart }) {
       {/* motor */}
       <mesh position={[-p.w * 0.5, 0.5, 0]} castShadow>
         <cylinderGeometry args={[p.w * 0.4, p.w * 0.4, p.d * 0.6, 32]} />
-        <meshStandardMaterial color={"#6fe0d1"} metalness={0.3} roughness={0.7} />
+        <meshStandardMaterial color="#6fe0d1" metalness={0.3} roughness={0.7} />
       </mesh>
       {/* shaft */}
       <mesh position={[0, 0.5, 0]}>
@@ -209,7 +206,7 @@ export function Mixer({ p }: { p: PlantPart }) {
       {[0, 1, 2].map((i) => (
         <mesh key={i} position={[0, 0.5, 0]} rotation={[0, (i * Math.PI * 2) / 3, 0]}>
           <boxGeometry args={[p.w * 0.8, 0.03, 0.08]} />
-          <meshStandardMaterial color={"#2ccbb8"} metalness={0.3} roughness={0.6} />
+          <meshStandardMaterial color="#2ccbb8" metalness={0.3} roughness={0.6} />
         </mesh>
       ))}
       <Edges color={zoneColor[p.zone]} threshold={20} />
@@ -274,7 +271,7 @@ export function ElectricalPanel({ p }: { p: PlantPart }) {
         <meshStandardMaterial color="#0f1a20" />
       </mesh>
       {/* name plate */}
-      <mesh position={[-p.w * 0.3, p.h / 2 + 0.1, p.d * 0.425]}>
+      <mesh position={[-p.w * 0.3, p.h / 2 + 0.1, p.d * 0.425]} >
         <boxGeometry args={[p.w * 0.3, p.h * 0.2, 0.01]} />
         <meshStandardMaterial color="#e0a94a" emissive="#e0a94a" emissiveIntensity={0.1} />
       </mesh>
@@ -282,6 +279,11 @@ export function ElectricalPanel({ p }: { p: PlantPart }) {
       <mesh position={[p.w * 0.3, p.h * 0.75, p.d * 0.42]}>
         <boxGeometry args={[p.w * 0.25, 0.08, 0.06]} />
         <meshStandardMaterial color="#0f1a20" />
+      </mesh>
+      {/* instrument panel on door */}
+      <mesh position={[p.w * 0.5, p.h / 2 + 0.15, p.d * 0.42]}>
+        <boxGeometry args={[p.w * 0.15, p.h * 0.1, 0.01]} />
+        <meshStandardMaterial color="#e0a94a" />
       </mesh>
       <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
       <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
@@ -306,7 +308,7 @@ export function Transformer({ p }: { p: PlantPart }) {
       {/* conservator tank */}
       <mesh position={[0, p.h / 2 + 0.1 + p.d * 0.3, 0]}>
         <cylinderGeometry args={[p.w * 0.3, p.w * 0.3, p.d * 0.4, 32]} />
-        <meshStandardMaterial color={"#7f9aa6"} metalness={0.2} roughness={0.8} />
+        <meshStandardMaterial color="#7f9aa6" metalness={0.2} roughness={0.8} />
       </mesh>
       {/* bushings */}
       <mesh position={[p.w / 3, p.h / 2 + 0.1 + p.d * 0.4, 0]}>
@@ -330,7 +332,7 @@ export function CableTray({ p }: { p: PlantPart }) {
   return (
     <group>
       {/* tray supports */}
-      {[-1, 1].map((s) => (
+      {[1, -1].map((s) => (
         <group key={s}>
           <mesh position={[s * (p.w / 2 - 2), 0.12, 0]} castShadow>
             <boxGeometry args={[0.08, p.h, 0.08]} />
@@ -384,7 +386,7 @@ export function LightningTower({ p }: { p: PlantPart }) {
       ))}
       {/* cross braces */}
       <mesh position={[0, p.h * 0.3, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, Math.sqrt((p.w * 0.5) ** 2 + (p.h * 0.4) ** 2), 16]} />
+        <cylinderGeometry args={[0.03, 0.03, Math.sqrt((p.w * 0.5) ** 2 + (p.h * 0.4) ** 2)]} />
         <meshStandardMaterial color="#425e6a" metalness={0.5} />
       </mesh>
       {/* air terminal (lightning rod top) */}
@@ -431,141 +433,297 @@ export function Building({ p }: { p: PlantPart }) {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* viewer shell                                                        */
-/* ------------------------------------------------------------------ */
+export function ControlPanel({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* base */}
+      <mesh position={[0, 0.06, 0]} receiveShadow>
+        <boxGeometry args={[p.w, 0.1, p.d]} />
+        <meshStandardMaterial color="#20343e" />
+      </mesh>
+      {/* cabinet */}
+      <mesh position={[0, p.h / 2 + 0.1, 0]} castShadow receiveShadow>
+        <boxGeometry args={[p.w * 0.9, p.h, p.d * 0.85]} />
+        <meshStandardMaterial color={p.color} metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* door with window */}
+      <mesh position={[0, p.h / 2 + 0.1, p.d * 0.42]}>
+        <boxGeometry args={[p.w * 0.85, p.h, 0.02]} />
+        <meshStandardMaterial color="#0f1a20" />
+      </mesh>
+      {/* name plate */}
+      <mesh position={[-p.w * 0.3, p.h / 2 + 0.1, p.d * 0.425]} >
+        <boxGeometry args={[p.w * 0.3, p.h * 0.2, 0.01]} />
+        <meshStandardMaterial color="#e0a94a" emissive="#e0a94a" emissiveIntensity={0.1} />
+      </mesh>
+      {/* ventilation slots */}
+      <mesh position={[p.w * 0.3, p.h * 0.75, p.d * 0.42]}>
+        <boxGeometry args={[p.w * 0.25, 0.08, 0.06]} />
+        <meshStandardMaterial color="#0f1a20" />
+      </mesh>
+      {/* instrument panel on door */}
+      <mesh position={[p.w * 0.5, p.h / 2 + 0.15, p.d * 0.42]}>
+        <boxGeometry args={[p.w * 0.15, p.h * 0.1, 0.01]} />
+        <meshStandardMaterial color="#e0a94a" />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h + 0.1, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
 
-export default function EquipmentViewer({ part }: { part: PlantPart }) {
-  const [dims, setDims] = useState(true);
-  const [text, setText] = useState(true);
+export function LocalControlPanel({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* base platform */}
+      <mesh position={[0, 0.06, 0]} receiveShadow>
+        <boxGeometry args={[p.w * 1.5, 0.1, p.d * 1.5]} />
+        <meshStandardMaterial color="#20343e" />
+      </mesh>
+      {/* panel body */}
+      <mesh position={[0, p.h / 2 + 0.1, 0]} castShadow receiveShadow>
+        <boxGeometry args={[p.w * 0.8, p.h * 0.6, p.d * 0.7]} />
+        <meshStandardMaterial color={p.color} metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* door */}
+      <mesh position={[0, p.h / 2 + 0.1, p.d * 0.4]}>
+        <boxGeometry args={[p.w * 0.6, p.h * 0.4, 0.02]} />
+        <meshStandardMaterial color="#0f1a20" />
+      </mesh>
+      {/* indicator lights */}
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} position={[p.w * 0.15, p.h * 0.3 + i * 0.2, p.d * 0.5]}>
+          <sphereGeometry args={[0.03, 12, 12]} />
+          <meshStandardMaterial color="#e0a94a" metalness={0.5} />
+        </mesh>
+      ))}
+      {/* HMI display */}
+      <mesh position={[p.w * 0.2, p.h / 2 + 0.3, p.d * 0.5]}>
+        <boxGeometry args={[p.w * 0.2, p.h * 0.1, 0.02]} />
+        <meshStandardMaterial color="#1e90ff" />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
 
-  const size = Math.max(part.w, part.d, part.h, 6);
-  const camDist = size * 2.1;
-  const gridStep = size < 10 ? 1 : size < 30 ? 5 : 10;
-  const ground = size * 6;
-  const footprint_m2 = +(part.w * part.d).toFixed(1);
+export function InstrumentPanel({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* base */}
+      <mesh position={[0, 0.06, 0]} receiveShadow>
+        <boxGeometry args={[p.w, 0.1, p.d]} />
+        <meshStandardMaterial color="#20343e" />
+      </mesh>
+      {/* instrument groups */}
+      {[1, -1].map((s) => (
+        <group key={s} position={[s * (p.w / 3), p.h / 2, 0]}>
+          {/* flow indicator */}
+          <mesh position={[0, p.h * 0.25, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, p.h * 0.4, 16]} />
+            <meshStandardMaterial color="#2ccbb8" metalness={0.3} />
+          </mesh>
+          {/* level indicator */}
+          <mesh position={[0, p.h * 0.5, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, p.h * 0.4, 16]} />
+            <meshStandardMaterial color="#7f9aa6" metalness={0.3} />
+          </mesh>
+          {/* pressure indicator */}
+          <mesh position={[0, p.h * 0.75, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, p.h * 0.4, 16]} />
+            <meshStandardMaterial color="#425e6a" metalness={0.3} />
+          </mesh>
+        </group>
+      ))}
+      {/* panel label */}
+      <mesh position={[0, p.h + 0.1, 0]}>
+        <boxGeometry args={[p.w, 0.2, p.d]} />
+        <meshStandardMaterial color="#1e2d37" />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
 
-  const dimValue = useMemo(() => ({ lines: dims, text }), [dims, text]);
+export function PipeRack({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* main beams */}
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[s * p.w / 2, 0.2, 0]}>
+          <boxGeometry args={[0.15, 3, p.d]} />
+          <meshStandardMaterial color="#2d5a70" metalness={0.5} />
+        </mesh>
+      ))}
+      {/* cross bracing */}
+      {[0, 1].map((i) => (
+        <mesh key={i} position={[0, p.h / 2, i * p.d / 2]}>
+          <boxGeometry args={[p.w, 0.1, 0.1]} />
+          <meshStandardMaterial color="#2d5a70" metalness={0.5} />
+        </mesh>
+      ))}
+      {/* pipe supports */}
+      {[1, -1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`${sx}${sz}`} position={[(sx * p.w) / 4, 0.5, (sz * p.d) / 4]}>
+            <cylinderGeometry args={[0.05, 0.05, 1, 16]} />
+            <meshStandardMaterial color="#425e6a" />
+          </mesh>
+        ))
+      )}
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
 
-  const geometry =
-    part.kind === "tank" ? (
-      <Tank p={part} />
-    ) : part.kind === "basin" ? (
-      <Basin p={part} />
-    ) : part.kind === "clarifier" ? (
-      <Clarifier p={part} />
-    ) : part.kind === "rack" ? (
-      <Rack p={part} />
-    ) : part.kind === "rack-frame" ? (
-      <RackFrame p={part} />
-    ) : part.kind === "pump" ? (
-      <Pump p={part} />
-    ) : part.kind === "mixer" ? (
-      <Mixer p={part} />
-    ) : part.kind === "heat-exchanger" ? (
-      <HeatExchanger p={part} />
-    ) : part.kind === "electrical" ? (
-      <ElectricalPanel p={part} />
-    ) : part.kind === "cable-tray" ? (
-      <CableTray p={part} />
-    ) : part.kind === "lightning" ? (
-      <LightningTower p={part} />
-    ) : (
-      <Building p={part} />
-    );
+export function PipeFrame({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* horizontal pipe */}
+      <mesh position={[0, 0.1, 0]}>
+        <cylinderGeometry args={[p.w * 0.3, p.w * 0.3, p.d * 0.5, 16]} />
+        <meshStandardMaterial color={p.color} metalness={0.5} />
+      </mesh>
+      {/* pipe supports */}
+      {[1, -1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`${sx}${sz}`} position={[(sx * p.w) / 3, 0.2, (sz * p.d) / 3]}>
+            <sphereGeometry args={[0.03, 12, 12]} />
+            <meshStandardMaterial color="#425e6a" />
+          </mesh>
+        ))
+      )}
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
+
+export function Insulation({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* insulation layer on pipe */}
+      {[0, -1].map((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`ins-${sx}-${sz}`} position={[(sx * p.w) / 4, p.h / 2 + 0.1, (sz * p.d) / 4]}>
+            <boxGeometry args={[p.w / 2, 0.2, p.d / 2]} />
+            <meshStandardMaterial color={p.color} metalness={0.1} roughness={0.8} transparent opacity={0.6} />
+          </mesh>
+        ))
+      )}
+      {/* rock wool pattern */}
+      <mesh position={[0, p.h / 2, 0]}>
+        <boxGeometry args={[p.w, p.h * 0.8, p.d]} />
+        <meshStandardMaterial color={p.color} metalness={0.1} roughness={0.9} transparent opacity={0.6} />
+      </mesh>
+      <Edges color={zoneColor[p.zone]} threshold={15} />
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
+
+export function Painting({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      {/* painted structure */}
+      <mesh position={[0, p.h / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[p.w, p.h, p.d]} />
+        <meshStandardMaterial color={p.color} metalness={0.2} roughness={0.4} />
+      </mesh>
+      {/* paint sheen highlight */}
+      <mesh position={[0, p.h / 2, 0]}>
+        <boxGeometry args={[p.w, p.h * 0.15, p.d]} />
+        <meshStandardMaterial color={p.color} metalness={0.1} roughness={0.1} />
+      </mesh>
+      <Edges color={zoneColor[p.zone]} threshold={15} />
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 2]} to={[p.w / 2, 0.04, p.d / 2 + 2]} label={`${p.w.toFixed(1)} m`} />
+      <Dim from={[p.w / 2 + 2, 0.04, -p.d / 2]} to={[p.w / 2 + 2, 0.04, p.d / 2]} label={`${p.d.toFixed(1)} m`} />
+      <Dim from={[-p.w / 2 - 2, 0, -p.d / 2]} to={[-p.w / 2 - 2, p.h, -p.d / 2]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
+
+
+const COMPONENTS: Partial<Record<PlantPart["kind"], (props: { p: PlantPart }) => React.JSX.Element>> = {
+  tank: Tank,
+  basin: Basin,
+  clarifier: Clarifier,
+  rack: Rack,
+  "rack-frame": RackFrame,
+  pump: Pump,
+  mixer: Mixer,
+  "heat-exchanger": HeatExchanger,
+  electrical: ElectricalPanel,
+  "pipe-rack": PipeRack,
+  "pipe-frame": PipeFrame,
+  insulation: Insulation,
+  painting: Painting,
+  building: Building,
+  "cable-tray": CableTray,
+  "control-panel": ControlPanel,
+  "local-control-panel": LocalControlPanel,
+  "instrument-panel": InstrumentPanel,
+  lightning: LightningTower,
+};
+
+/** Frames the camera on the item so a 4 m tank and a 55 m cable run both read. */
+function CameraFit({ p }: { p: PlantPart }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    const span = Math.max(p.w, p.d, p.h, 1);
+    const dist = span * 1.9 + 3;
+    camera.position.set(dist * 0.85, span * 0.95 + 2, dist * 1.05);
+    camera.lookAt(0, p.h * 0.45, 0);
+    if (camera instanceof THREE.PerspectiveCamera) camera.updateProjectionMatrix();
+  }, [camera, p]);
+  return null;
+}
+
+/** Main EquipmentViewer component that renders the appropriate 3D model based on part kind */
+export function EquipmentViewer({ part }: { part: PlantPart }) {
+  const Component = COMPONENTS[part.kind];
+  const dimValue = useMemo(() => ({ lines: true, text: true }), []);
 
   return (
-    <div className="relative h-[420px] w-full overflow-hidden rounded-lg border border-line bg-[#060b0e]">
-      <Canvas shadows camera={{ position: [camDist, camDist * 0.7, camDist * 0.9], fov: 40 }} dpr={[1, 2]}>
-        <color attach="background" args={["#060b0e"]} />
-        <fog attach="fog" args={["#060b0e", size * 12, size * 34]} />
-        <hemisphereLight intensity={0.6} groundColor="#0a1418" color="#9fd8d2" />
-        <directionalLight
-          position={[size * 3, size * 4, size * 2]}
-          intensity={1.2}
-          castShadow
-          shadow-mapSize={[2048, 2048]}
+    <CanvasBoundary label={`${part.id} model`}>
+    <div className="relative h-[440px] w-full overflow-hidden rounded-lg border border-line bg-ink-900">
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [10, 8, 12], fov: 45 }}>
+        <color attach="background" args={["#070d10"]} />
+        <hemisphereLight args={["#8fb9c9", "#0a1114", 1] as [string, string, number]} />
+        <directionalLight position={[12, 18, 10]} intensity={1.3} castShadow />
+        <directionalLight position={[-10, 8, -8]} intensity={0.4} color="#5d8ea3" />
+        <gridHelper
+          args={[Math.max(part.w, part.d) * 6 + 10, 20, "#1e3a44", "#15252c"]}
+          position={[0, 0, 0]}
         />
-        <directionalLight position={[-size * 2, size * 2, -size * 3]} intensity={0.4} color="#2ccbb8" />
-
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[ground, ground]} />
-          <meshStandardMaterial color="#0a1418" roughness={1} />
-        </mesh>
-        <Grid
-          args={[ground, ground]}
-          position={[0, 0.02, 0]}
-          cellSize={gridStep}
-          cellThickness={0.4}
-          cellColor="#16252c"
-          sectionSize={gridStep * 5}
-          sectionThickness={0.7}
-          sectionColor="#1e323b"
-          fadeDistance={ground * 2}
-          infiniteGrid={false}
-        />
-
-        <DimContext.Provider value={dimValue}>{geometry}</DimContext.Provider>
-        <ProjectionBridge />
-
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.08}
-          minDistance={size * 0.8}
-          maxDistance={camDist * 3}
-          maxPolarAngle={Math.PI / 2.15}
-          target={[0, part.h / 2, 0]}
-        />
+        <CameraFit p={part} />
+        <DimContext.Provider value={dimValue}>
+          {Component ? (
+            <Component p={part} />
+          ) : (
+            <mesh position={[0, 0.5, 0]}>
+              <boxGeometry args={[part.w, part.h, part.d]} />
+              <meshStandardMaterial color={part.color} metalness={0.3} roughness={0.6} />
+            </mesh>
+          )}
+        </DimContext.Provider>
+        <OrbitControls target={[0, part.h * 0.45, 0]} enableDamping maxPolarAngle={Math.PI / 2.02} />
       </Canvas>
-
-      {/* caption */}
-      <div className="pointer-events-none absolute left-3 top-3 max-w-[65%]">
-        <div className="font-mono text-[13px] font-semibold text-teal-300">{part.id}</div>
-        <div className="text-[11.5px] text-mist-200">
-          {part.label}
-          <span className="ml-2 font-mono text-[10px] text-mist-400">Area {part.area}</span>
-        </div>
-        <div className="mt-1 space-y-0.5 text-[10.5px] text-mist-400">
-          <div>
-            Footprint {part.w.toFixed(1)} × {part.d.toFixed(1)} m ({footprint_m2.toLocaleString("en-US")} m²)
-          </div>
-          <div>Overall height {part.h.toFixed(1)} m</div>
-          <div>
-            <span
-              className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
-              style={{ background: zoneColor[part.zone] }}
-            />
-            {part.zone}
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute right-3 top-3 flex flex-col gap-1.5 text-[10.5px]">
-        <button
-          onClick={() => setDims((v) => !v)}
-          className={`rounded border px-2 py-1 ${
-            dims ? "border-amber-l/60 bg-amber-l/15 text-amber-l" : "border-ink-600 bg-ink-950/80 text-mist-400"
-          }`}
-        >
-          Dimension lines
-        </button>
-        <button
-          onClick={() => setText((v) => !v)}
-          className={`rounded border px-2 py-1 ${
-            text ? "border-teal-500/60 bg-teal-500/15 text-teal-300" : "border-ink-600 bg-ink-950/80 text-mist-400"
-          }`}
-        >
-          Dimension text
-        </button>
-      </div>
-
-      <div className="absolute bottom-3 left-3 rounded border border-line bg-ink-950/80 px-2.5 py-1.5 text-[10px] text-mist-400">
-        Drag to orbit · scroll to zoom · right-drag to pan
-      </div>
-
-      <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-line bg-ink-950/80 px-2.5 py-1.5 text-[10px] text-mist-400">
-        Parametric from register dimensions · grid {gridStep} m
+      <div className="pointer-events-none absolute left-3 top-2 font-mono text-[10.5px] text-mist-400">
+        {part.id} · {part.w.toFixed(1)} × {part.d.toFixed(1)} × {part.h.toFixed(1)} m ·{" "}
+        {(part.w * part.d).toFixed(1)} m² footprint
       </div>
     </div>
+    </CanvasBoundary>
   );
 }

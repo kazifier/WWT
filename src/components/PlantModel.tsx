@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useMemo, useState } from "react";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid } from "@react-three/drei";
-import * as THREE from "three";
-import { parts, plot, plotArea_m2, zoneColor } from "@/lib/plantLayout";
-import { DimContext, GroundRect, DimLabel, ProjectionBridge } from "@/components/Dim3";
+import { parts, plot, plotArea_m2, zoneColor, type Zone } from "@/lib/plantLayout";
+import { DimContext, GroundRect, DimLabel } from "@/components/Dim3";
+import { CanvasBoundary } from "@/components/CanvasBoundary";
 import {
   Tank,
   Basin,
@@ -19,14 +19,23 @@ import {
   ElectricalPanel,
   CableTray,
   LightningTower,
+  ControlPanel,
+  LocalControlPanel,
+  InstrumentPanel,
+  PipeRack,
+  PipeFrame,
+  Insulation,
+  Painting,
 } from "@/components/EquipmentViewer";
 
 export default function PlantModel() {
   const [showZones, setShowZones] = useState(true);
-  const [labels, setLabels] = useState(true);
   const [dims, setDims] = useState(false);
   const [option3, setOption3] = useState(false);
 
+  // Every modelled item is drawn. The Option 3 toggle only controls whether the
+  // ZLD block of area 95 is included, so the header count always matches the
+  // register instead of silently dropping piping and instrument items.
   const visible = useMemo(
     () => (option3 ? parts : parts.filter((p) => p.area !== "95")),
     [option3],
@@ -35,16 +44,11 @@ export default function PlantModel() {
   const dimValue = useMemo(() => ({ lines: dims, text: dims }), [dims]);
 
   return (
+    <CanvasBoundary label="Overall 3D model" height="70vh">
     <div className="relative h-[70vh] min-h-[520px] w-full overflow-hidden rounded-xl border border-line bg-ink-900">
-      <Canvas
-        camera={{ position: [150, 110, 160], fov: 38 }}
-        shadows
-        dpr={[1, 2]}
-      >
+      <Canvas camera={{ position: [150, 110, 160], fov: 38 }} shadows dpr={[1, 2]}>
         <color attach="background" args={["#070d10"]} />
         <fog attach="fog" args={["#070d10", 260, 520]} />
-
-        <ProjectionBridge />
 
         <hemisphereLight args={["#8fb9c9", "#0a1114", 0.85]} />
         <directionalLight
@@ -60,11 +64,7 @@ export default function PlantModel() {
         <directionalLight position={[-90, 60, -80]} intensity={0.35} color="#5d8ea3" />
 
         {/* ground plane */}
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -0.05, 0]}
-          receiveShadow
-        >
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
           <planeGeometry args={[900, 900]} />
           <meshStandardMaterial color="#0a1317" />
         </mesh>
@@ -85,23 +85,14 @@ export default function PlantModel() {
 
         {dims && (
           <>
-            <DimLabel position={[0, 0.05, plot.zMin - 7]}>
-              <div className="rounded border border-amber-l/40 bg-ink-950/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-amber-l">
-                {plot.w.toFixed(2)} m overall
-              </div>
-            </DimLabel>
-            <DimLabel position={[plot.xMax + 9, 0.05, 0]}>
-              <div className="rounded border border-amber-l/40 bg-ink-950/90 px-1.5 py-0.5 text-[9.5px] font-semibold text-amber-l">
-                {plot.d.toFixed(2)} m overall
-              </div>
-            </DimLabel>
+            <DimLabel position={[0, 0.05, plot.zMin - 7]}>{`${plot.w.toFixed(1)} m overall`}</DimLabel>
+            <DimLabel position={[plot.xMax + 9, 0.05, 0]}>{`${plot.d.toFixed(1)} m overall`}</DimLabel>
           </>
         )}
 
         <DimContext.Provider value={dimValue}>
           {visible.map((p) => (
-            <group key={p.id}>
-              <group position={[p.x, 0, p.z]}>
+            <group key={p.id} position={[p.x, 0, p.z]}>
               {p.kind === "tank" && <Tank p={p} />}
               {p.kind === "basin" && <Basin p={p} />}
               {p.kind === "clarifier" && <Clarifier p={p} />}
@@ -114,38 +105,13 @@ export default function PlantModel() {
               {p.kind === "electrical" && <ElectricalPanel p={p} />}
               {p.kind === "cable-tray" && <CableTray p={p} />}
               {p.kind === "lightning" && <LightningTower p={p} />}
-              </group>
-
-              {/* zone ring */}
-              {showZones && (
-                <mesh
-                  position={[p.x, 0.06, p.z]}
-                  rotation={[-Math.PI / 2, 0, 0]}
-                >
-                  <ringGeometry args={[Math.max(p.w, p.d) / 2 + 1.2, Math.max(p.w, p.d) / 2 + 1.7, 48]} />
-                  <meshBasicMaterial
-                    color={zoneColor[p.zone]}
-                    transparent
-                    opacity={0.85}
-                    side={THREE.DoubleSide}
-                  />
-                </mesh>
-              )}
-
-              {labels && (
-                <DimLabel position={[p.x, p.h + 2.6, p.z]}>
-                  <div
-                    className="pointer-events-none whitespace-nowrap rounded border px-1.5 py-[1px] text-[9.5px] font-semibold backdrop-blur-sm"
-                    style={{
-                      borderColor: zoneColor[p.zone],
-                      background: "rgba(7,13,16,0.82)",
-                      color: zoneColor[p.zone],
-                    }}
-                  >
-                    {p.id} {p.label}
-                  </div>
-                </DimLabel>
-              )}
+              {p.kind === "control-panel" && <ControlPanel p={p} />}
+              {p.kind === "local-control-panel" && <LocalControlPanel p={p} />}
+              {p.kind === "instrument-panel" && <InstrumentPanel p={p} />}
+              {p.kind === "pipe-rack" && <PipeRack p={p} />}
+              {p.kind === "pipe-frame" && <PipeFrame p={p} />}
+              {p.kind === "insulation" && <Insulation p={p} />}
+              {p.kind === "painting" && <Painting p={p} />}
             </group>
           ))}
         </DimContext.Provider>
@@ -159,68 +125,43 @@ export default function PlantModel() {
         />
       </Canvas>
 
-      {/* legend */}
-      <div className="pointer-events-none absolute left-3 top-3 space-y-1.5 rounded-lg border border-line bg-ink-950/85 p-3 text-[10px]">
-        <div className="font-semibold uppercase tracking-[0.14em] text-mist-400">
-          Zones
+      {/* DOM overlays live outside <Canvas>: the R3F reconciler cannot host
+          divs, and doing so previously crashed the whole page. */}
+      {showZones && (
+        <div className="pointer-events-none absolute left-3 top-3 space-y-1.5 rounded-lg border border-line bg-ink-950/85 p-3 text-[10px]">
+          <div className="font-semibold uppercase tracking-[0.14em] text-mist-400">Zones</div>
+          {(
+            [
+              ["Zone 0", "Zone 0 — hazardous"],
+              ["Zone 1", "Zone 1 — hazardous"],
+              ["Zone 2", "Zone 2 — hazardous"],
+              ["Unclassified", "Unclassified / utilities"],
+            ] as [Zone, string][]
+          ).map(([z, name]) => (
+            <div key={z} className="flex items-center gap-2">
+              <span className="inline-block h-2 w-4 rounded-sm" style={{ background: zoneColor[z] }} />
+              <span className="text-mist-300">{name}</span>
+            </div>
+          ))}
         </div>
-        {(
-          [
-            ["Zone 0", "Zone 0 — hazardous"],
-            ["Zone 1", "Zone 1 — hazardous"],
-            ["Zone 2", "Zone 2 — hazardous"],
-            ["Unclassified", "Unclassified / utilities"],
-          ] as const
-        ).map(([z, name]) => (
-          <div key={z} className="flex items-center gap-2">
-            <span
-              className="inline-block h-2 w-4 rounded-sm"
-              style={{ background: zoneColor[z] }}
-            />
-            <span className="text-mist-300">{name}</span>
-          </div>
-        ))}
-      </div>
+      )}
 
-      {/* controls */}
       <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
         <button
           onClick={() => setShowZones((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${
-            showZones
-              ? "border-teal-500 bg-teal-500/15 text-teal-300"
-              : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"
-          }`}
+          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${showZones ? "border-teal-500 bg-teal-500/15 text-teal-300" : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"}`}
         >
           Zone overlay
         </button>
         <button
-          onClick={() => setLabels((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${
-            labels
-              ? "border-teal-500 bg-teal-500/15 text-teal-300"
-              : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"
-          }`}
-        >
-          Tags
-        </button>
-        <button
           onClick={() => setDims((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${
-            dims
-              ? "border-amber-l bg-amber-l/15 text-amber-l"
-              : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"
-          }`}
+          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${dims ? "border-amber-l bg-amber-l/15 text-amber-l" : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"}`}
         >
           Dimensions
         </button>
         <button
           onClick={() => setOption3((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${
-            option3
-              ? "border-rust bg-rust/15 text-rust"
-              : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"
-          }`}
+          className={`rounded border px-2.5 py-1 text-[10.5px] transition-colors ${option3 ? "border-rust bg-rust/15 text-rust" : "border-line bg-ink-950/80 text-mist-400 hover:text-mist-200"}`}
         >
           Option 3 ZLD
         </button>
@@ -230,8 +171,10 @@ export default function PlantModel() {
         Drag to orbit · scroll to zoom · grid = 5 m, heavy grid = 25 m
       </div>
       <div className="pointer-events-none absolute bottom-3 right-3 text-[10px] text-mist-400">
-        Plot {plot.w.toFixed(0)} × {plot.d.toFixed(0)} m ({plotArea_m2.toLocaleString("en-US")} m²) · {visible.length} items
+        Plot {plot.w.toFixed(0)} × {plot.d.toFixed(0)} m ({plotArea_m2.toLocaleString("en-US")} m²) ·{" "}
+        {visible.length} items
       </div>
     </div>
+    </CanvasBoundary>
   );
 }

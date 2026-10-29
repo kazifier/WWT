@@ -1,0 +1,26 @@
+1:"$Sreact.fragment"
+2:"/WWT/_next/static/chunks/3y5lym5o7inwg.js"
+3:I[84834,["$2"],"default"]
+4:I[39756,["$2"],"default"]
+5:I[37457,["$2"],"default"]
+9:I[47257,["$2"],"ClientPageRoot"]
+a:"/WWT/_next/static/chunks/0ibyq3822_o18.js"
+b:I[95162,["$2","$a"],"default"]
+e:I[97367,["$2"],"OutletBoundary"]
+f:"$Sreact.suspense"
+11:"ViewportBoundary"
+12:I[97367,["$2"],"$11"]
+14:"MetadataBoundary"
+15:I[97367,["$2"],"$14"]
+17:I[68027,["$2"],"default",1]
+:HL["/WWT/_next/static/chunks/3bwmq8s3oe_to.css","style"]
+7:X
+8:[["children",{"s":"__PAGE__","h":512,"d":{"r":["$","$1","c",{"children":[["$","$L9",null,{"Component":"$b","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@c","$@d"]}}],[["$","script","script-0",{"src":"/WWT/_next/static/chunks/0ibyq3822_o18.js","async":true,"nonce":"$undefined"}]],["$","$Le",null,{"children":["$","$f",null,{"name":"Next.MetadataOutlet","children":"$@10"}]}]]}],"p":false,"v":null}}]]
+6:[["children",{"s":"assistant","h":512,"d":{"r":["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":false,"v":"$7"},"c":"$Q8"}]]
+0:{"P":null,"c":["","assistant",""],"q":"","i":false,"t":{"t":{"s":"","h":528,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/WWT/_next/static/chunks/3bwmq8s3oe_to.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/WWT/_next/static/chunks/3y5lym5o7inwg.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en","children":["$","body",null,{"className":"min-h-screen antialiased","children":[["$","$L3",null,{}],["$","main",null,{"className":"mx-auto max-w-[1500px] px-4 py-6","children":["$","$L4",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L5",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}],["$","footer",null,{"className":"mt-10 border-t border-line px-4 py-5","children":["$","div",null,{"className":"mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 text-[10.5px] text-mist-400","children":[["$","span",null,{"children":"RAMSIS Engineering W.L.L., Bahrain · B047 WWT dossier · Rev A (pre-bid) · Estimate accuracy AACE Class 4 (±25 %)"}],["$","span",null,{"className":"font-mono","children":"2024B047-MR-0022 Rev B · BOD-0001 Rev 1 · BOD-0002 Rev 0"}]]}]}]]}]}]]}],"p":false,"v":null},"c":"$Q6"},"h":{"r":["$","$1","h",{"children":[null,["$","$L12",null,{"children":"$L13"}],["$","$L15",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$f",null,{"name":"Next.Metadata","children":"$L16"}]}],null]}],null]}],"p":false,"v":null}},"m":"$undefined","G":["$17",[["$","link","0",{"rel":"stylesheet","href":"/WWT/_next/static/chunks/3bwmq8s3oe_to.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]]],"S":true,"r":"$undefined","s":"$undefined","a":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"QnlaNsX1o6hDUN8Mx03Lr"}
+7:C
+c:{}
+d:"$8:0:1:d:r:props:children:0:props:serverProvidedParams:params"
+13:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+10:null
+16:[["$","title","0",{"children":"B047 WWT — Engineering Dossier | RAMSIS Engineering"}],["$","meta","1",{"name":"description","content":"Design calculations, equipment register, make-vs-buy, BOM/MTO, procurement recommendations and estimate for the 500 m³/h Diwanya Refinery Waste Water Treatment package."}]]

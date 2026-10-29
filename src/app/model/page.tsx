@@ -36,14 +36,13 @@ const PlanDrawing = dynamic(() => import("@/components/Plant2D").then((m) => m.P
 });
 
 const ElevationDrawing = dynamic(() => import("@/components/Plant2D").then((m) => m.ElevationDrawing), {
+  ssr: false,  loading: () => skeleton("470px"),
+});
+const EquipmentViewer = dynamic(() => import("@/components/EquipmentViewer").then((m) => m.EquipmentViewer), {
   ssr: false,
-  loading: () => skeleton("470px"),
+  loading: () => skeleton("440px"),
 });
 
-const EquipmentViewer = dynamic(() => import("@/components/EquipmentViewer"), {
-  ssr: false,
-  loading: () => skeleton("420px"),
-});
 
 function DrawingFrame({
   no,

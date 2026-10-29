@@ -201,7 +201,7 @@ export default function ProcurementPage() {
               <div key={g.k} className="rounded border border-line bg-ink-900/50 p-3">
                 <div className="flex items-center justify-between">
                   <Badge tone={g.tone}>{g.k}</Badge>
-                  <span className="font-mono text-[12px] text-mist-200">{usd(v)}</span>
+                  <span className="font-mono text-[12px] text-mist-200" data-commercial>{usd(v)}</span>
                 </div>
                 <div className="mt-1 text-[10.5px] text-mist-400">{g.rows.length} tags</div>
               </div>

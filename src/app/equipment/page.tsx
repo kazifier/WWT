@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { Card, Badge, SectionTitle, usd } from "@/components/ui";
 import { equipment, areas, equipmentSummary } from "@/data/equipment";
+import { useViewMode } from "@/components/view-mode";
 
 export default function EquipmentPage() {
+  const { isInternal } = useViewMode();
   const [area, setArea] = useState("All");
   const [makeBuy, setMakeBuy] = useState("All");
   const [q, setQ] = useState("");
@@ -39,12 +41,14 @@ export default function EquipmentPage() {
           { k: "Tags", v: String(equipmentSummary.count) },
           { k: "Make (RAMSIS)", v: String(equipmentSummary.makeCount) },
           { k: "Buy", v: String(equipmentSummary.buyCount) },
-          { k: "Supply value", v: usd(equipmentSummary.total) },
+          { k: "Supply value", v: usd(equipmentSummary.total), commercial: true },
           { k: "Installed power", v: `${power.toFixed(0)} kW` },
         ].map((s) => (
           <Card key={s.k} className="px-3 py-2">
             <div className="text-[10px] uppercase tracking-wide text-mist-400">{s.k}</div>
-            <div className="font-mono text-[15px] text-mist-200">{s.v}</div>
+            <div className="font-mono text-[15px] text-mist-200">
+              {s.commercial && !isInternal ? "Internal view only" : s.v}
+            </div>
           </Card>
         ))}
       </div>
@@ -78,7 +82,7 @@ export default function EquipmentPage() {
           className="min-w-[240px] flex-1 rounded border border-ink-600 bg-ink-850 px-2.5 py-1 text-[11px] text-mist-200 placeholder:text-mist-400/60"
         />
         <span className="font-mono text-[10.5px] text-mist-400">
-          {rows.length} shown · {usd(value)}
+          {rows.length} shown{isInternal && <> · {usd(value)}</>}
         </span>
       </div>
 
@@ -95,7 +99,7 @@ export default function EquipmentPage() {
                 <th>Area class</th>
                 <th className="text-right">Power</th>
                 <th className="text-right">Weight</th>
-                <th className="text-right">Supply</th>
+                <th className="text-right" data-commercial>Supply</th>
                 <th>Make / buy</th>
                 <th>Vendor</th>
                 <th className="text-right">Lead</th>
@@ -123,7 +127,7 @@ export default function EquipmentPage() {
                   </td>
                   <td className="num">{e.power_kW ? `${e.power_kW} kW` : "—"}</td>
                   <td className="num">{e.weight_t ? `${e.weight_t} t` : "—"}</td>
-                  <td className="num text-mist-200">{usd(e.cost_usd * e.qty)}</td>
+                  <td className="num text-mist-200" data-commercial>{usd(e.cost_usd * e.qty)}</td>
                   <td>
                     <Badge tone={e.makeBuy === "MAKE" ? "green" : "violet"}>{e.makeBuy}</Badge>
                   </td>
@@ -139,11 +143,11 @@ export default function EquipmentPage() {
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={8} className="text-right text-[11px] text-mist-400">
+                <td colSpan={8} className="text-right text-[11px] text-mist-400" data-commercial>
                   Total supply value of the filtered set
                 </td>
-                <td className="num font-semibold text-teal-300">{usd(value)}</td>
-                <td colSpan={3} />
+                <td className="num font-semibold text-teal-300" data-commercial>{usd(value)}</td>
+                <td colSpan={3} data-commercial />
               </tr>
             </tfoot>
           </table>
@@ -162,7 +166,7 @@ export default function EquipmentPage() {
                   <span className="font-mono text-[10px] text-mist-400">{a.code}</span> {a.name}
                 </span>
                 <span className="whitespace-nowrap font-mono text-[10.5px] text-mist-400">
-                  {items.length} items · {usd(v)}
+                  {items.length} items{isInternal && <> · {usd(v)}</>}
                 </span>
               </div>
             );

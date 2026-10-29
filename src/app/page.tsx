@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, Stat, Badge, SectionTitle, Callout, Bar, money, nf, usd } from "@/components/ui";
+import { CommercialOnly, ClientOnly } from "@/components/view-mode";
 import { project, treatmentOptions, clarifications, hazardousArea } from "@/data/project";
 import { equipmentSummary, byArea } from "@/data/equipment";
 import { unlistedCategories } from "@/data/vendors";
@@ -57,8 +58,21 @@ export default function Home() {
       {/* KPI row */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Design capacity" value="500" unit="m³/h" sub="12,000 m³/d · 50–110 % turndown" accent />
-        <Stat label="Recommended capex" value={money(rec.total)} unit="USD" sub={`${usd(rec.perCapacity)} per m³/h of capacity`} />
-        <Stat label="Annual opex" value={money(recOpex.total)} unit="/yr" sub="Power, chemicals, membranes, sludge" />
+        <CommercialOnly>
+          <Stat label="Recommended capex" value={money(rec.total)} unit="USD" sub={`${usd(rec.perCapacity)} per m³/h of capacity`} />
+        </CommercialOnly>
+        <CommercialOnly>
+          <Stat label="Annual opex" value={money(recOpex.total)} unit="/yr" sub="Power, chemicals, membranes, sludge" />
+        </CommercialOnly>
+        <ClientOnly>
+          <div className="col-span-2">
+            <Stat
+              label="Commercial"
+              value="—"
+              sub="Capital and operating cost are in the internal view of this dossier"
+            />
+          </div>
+        </ClientOnly>
         <Stat label="Equipment tags" value={String(equipmentSummary.count)} sub={`${equipmentSummary.makeCount} make · ${equipmentSummary.buyCount} buy`} />
         <Stat label="Open clarifications" value={String(clarifications.length)} sub={`${clarifications.filter((c) => c.severity === "High").length} high severity`} />
       </section>
@@ -105,8 +119,9 @@ export default function Home() {
           </div>
           <p className="mt-2 text-[12px] leading-relaxed text-mist-400">
             At {P.membrane.roReject} m³/h of RO reject, net evaporation of {nf(P.evaporation.netEvap_m_yr, 2)} m/yr
-            needs {haWithSqm(P.evaporation.areaWithFreeboard_ha)} of lined pond — roughly{" "}
-            {money(P.evaporation.areaWithFreeboard_ha * 10_000 * 18)} of lining alone. Concentrating the brine
+            needs {haWithSqm(P.evaporation.areaWithFreeboard_ha)} of lined pond{" "}
+            <span data-commercial>— roughly {money(P.evaporation.areaWithFreeboard_ha * 10_000 * 18)} of lining alone</span>
+            . Concentrating the brine
             first cuts that to about {haWithSqm(P.evaporation.areaWithFreeboard_ha * 0.2)} and is the basis of
             the recommended option.
           </p>
@@ -190,7 +205,10 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <p className="mt-3 text-[11px] text-mist-400">{byArea.length} equipment areas · {equipmentSummary.count} tagged items · {usd(equipmentSummary.total)} of supply value</p>
+          <p className="mt-3 text-[11px] text-mist-400">
+            {byArea.length} equipment areas · {equipmentSummary.count} tagged items{" "}
+            <span data-commercial>· {usd(equipmentSummary.total)} of supply value</span>
+          </p>
         </Card>
 
         <Card className="p-4">
@@ -212,7 +230,7 @@ export default function Home() {
               <span>Coating area</span>
               <span className="font-mono text-mist-200">{nf(mtoTotals.coating_m2, 0)} m²</span>
             </div>
-            <div className="flex justify-between border-t border-line pt-2">
+            <div className="flex justify-between border-t border-line pt-2" data-commercial>
               <span>Workshop value</span>
               <span className="font-mono text-teal-300">{usd(fabrication.total)}</span>
             </div>

@@ -104,3 +104,23 @@ table.grid-table tbody tr:hover td {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+
+/*
+ * External (client) view — no pricing or commercial content.
+ * `data-view` is set on <html> by ViewModeProvider; internal is the default so
+ * nothing is hidden until the reader deliberately switches to the client view.
+ */
+html[data-view="external"] [data-commercial] {
+  display: none !important;
+}
+
+html[data-view="external"] [data-commercial-inline] {
+  visibility: hidden;
+}
+
+/* Print a copy for a client without accidentally carrying the cost columns. */
+@media print {
+  html[data-view="external"] [data-commercial] {
+    display: none !important;
+  }
+}

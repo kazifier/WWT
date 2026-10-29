@@ -12,6 +12,7 @@ import { loadSummary, pumpResults } from "@/lib/calc/mechanical";
 import { mtoTotals, fabrication } from "@/lib/calc/mto";
 import { optionEstimates, opexFor, PV_FACTOR } from "@/lib/calc/cost";
 import { haWithSqm, plot, plotArea_m2, areaBlocks, blockAreaTotal_m2, sqm, partCounts } from "@/lib/plantLayout";
+import { optionComparisons, recommendedOption, weightedTotal } from "@/lib/options";
 import { bulkSheets, bulkTotals } from "@/lib/calc/bulk";
 import { pipeBySize, pipingSummary, valveSchedule, valveTotals } from "@/lib/piping";
 import { instrumentsByArea, ioSummary } from "@/lib/instruments";
@@ -90,6 +91,7 @@ ${sheets}
 
 # OPTIONS
 ${treatmentOptions.map((o) => `${o.name}: ${o.basis}`).join("\n")}
+Option 2R (recommended fourth route): RO reuse as Option 2 with an MVR brine concentrator instead of the evaporation pond — ${recommendedOption.recovery_pct} % water recovery (${recommendedOption.reuse_m3h} m3/h to reuse), ${recommendedOption.brine_m3h} m3/h of brine to the refinery brine system, no pond and no crystalliser, ${(recommendedOption.power_kW / 1000).toFixed(2)} MW plant demand. Weighted score ${weightedTotal(recommendedOption.scores, true)} of 5 against ${optionComparisons.filter((o) => !o.recommended).map((o) => `${o.code}: ${weightedTotal(o.scores, true)}`).join(", ")}. Open interface: MRC acceptance of the brine transfer. The /options page carries the full comparison; in the external view its commercial rows are withheld.
 
 # COST
 ${costs}

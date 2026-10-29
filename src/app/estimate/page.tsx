@@ -3,6 +3,7 @@ import { optionEstimates, opexFor, lifeCycle, PV_FACTOR } from "@/lib/calc/cost"
 import { fabrication, mtoTotals } from "@/lib/calc/mto";
 import { haWithSqm } from "@/lib/plantLayout";
 import { equipmentSummary } from "@/data/equipment";
+import { CommercialPage } from "@/components/view-mode";
 
 export const metadata = { title: "Project estimate — B047 WWT" };
 
@@ -13,6 +14,7 @@ const maxCapex = Math.max(...optionEstimates.map((o) => o.total));
 
 export default function EstimatePage() {
   return (
+    <CommercialPage title="Project estimate and life-cycle cost">
     <div className="space-y-8">
       <SectionTitle eyebrow="Section 7" title="Project estimate and life-cycle cost">
         AACE Class 4 (+/− 25 %), USD, fourth-quarter 2026 Gulf basis. Direct costs are built from the equipment
@@ -254,5 +256,6 @@ export default function EstimatePage() {
         chloride and sulphate non-compliance would be a guarantee exposure, not a competitive position.
       </Callout>
     </div>
+    </CommercialPage>
   );
 }

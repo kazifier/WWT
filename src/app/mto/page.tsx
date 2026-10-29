@@ -1,4 +1,5 @@
 import { Card, Badge, SectionTitle, usd, nf, Bar, Callout } from "@/components/ui";
+import { CommercialOnly } from "@/components/view-mode";
 import { mtoRows, mtoTotals, fabrication, rateFor, materialRate } from "@/lib/calc/mto";
 import { equipment } from "@/data/equipment";
 import { lineTakeoff, pipingSummary, valveSchedule, valveTotals, pipeBySize } from "@/lib/piping";
@@ -27,7 +28,6 @@ export default function MtoPage() {
           { k: "Fabrication hours", v: mtoTotals.manhours.toLocaleString(), s: `${nf(mtoTotals.manhours / mtoTotals.total_t, 1)} h per tonne average` },
           { k: "Welding", v: `${nf(mtoTotals.weld_m, 0)} m`, s: "butt and fillet, excluding temporary" },
           { k: "Coating", v: `${nf(mtoTotals.coating_m2, 0)} m²`, s: "blast to Sa 2.5 plus epoxy system" },
-          { k: "Direct workshop cost", v: usd(fabrication.total), s: "material, labour, coating, NDT, consumables" },
         ].map((s) => (
           <Card key={s.k} className="p-3.5">
             <div className="text-[10px] uppercase tracking-wide text-mist-400">{s.k}</div>
@@ -35,6 +35,15 @@ export default function MtoPage() {
             <div className="text-[10.5px] leading-snug text-mist-400">{s.s}</div>
           </Card>
         ))}
+        <Card className="p-3.5">
+          <div className="text-[10px] uppercase tracking-wide text-mist-400">Direct workshop cost</div>
+          <div className="mt-0.5 font-mono text-[15px] text-teal-300" data-commercial>
+            {usd(fabrication.total)}
+          </div>
+          <div className="text-[10.5px] leading-snug text-mist-400">
+            material, labour, coating, NDT, consumables
+          </div>
+        </Card>
       </section>
 
       <section>
@@ -111,9 +120,9 @@ export default function MtoPage() {
               <tr>
                 <th>Grade</th>
                 <th className="text-right">Tonnes</th>
-                <th className="text-right">Material rate</th>
-                <th className="text-right">Material value</th>
-                <th className="text-right">Labour rate</th>
+                <th className="text-right" data-commercial>Material rate</th>
+                <th className="text-right" data-commercial>Material value</th>
+                <th className="text-right" data-commercial>Labour rate</th>
                 <th className="text-right">Hours</th>
               </tr>
             </thead>
@@ -122,9 +131,9 @@ export default function MtoPage() {
                 <tr key={g.grade}>
                   <td className="text-mist-300">{g.grade}</td>
                   <td className="num text-mist-200">{nf(g.tonnes, 1)}</td>
-                  <td className="num">{usd(materialRate(g.grade))}/t</td>
-                  <td className="num text-mist-200">{usd(g.tonnes * materialRate(g.grade))}</td>
-                  <td className="num">${rateFor(g.grade)}/h</td>
+                  <td className="num" data-commercial>{usd(materialRate(g.grade))}/t</td>
+                  <td className="num text-mist-200" data-commercial>{usd(g.tonnes * materialRate(g.grade))}</td>
+                  <td className="num" data-commercial>${rateFor(g.grade)}/h</td>
                   <td className="num">{g.hours.toLocaleString()}</td>
                 </tr>
               ))}
@@ -133,8 +142,8 @@ export default function MtoPage() {
               <tr>
                 <td className="text-[11px] text-mist-400">Total</td>
                 <td className="num font-semibold text-teal-300">{nf(mtoTotals.total_t, 1)}</td>
-                <td />
-                <td className="num font-semibold text-teal-300">
+                <td data-commercial />
+                <td className="num font-semibold text-teal-300" data-commercial>
                   {usd(mtoTotals.byGrade.reduce((a, g) => a + g.tonnes * materialRate(g.grade), 0))}
                 </td>
                 <td />
@@ -144,6 +153,7 @@ export default function MtoPage() {
           </table>
         </Card>
 
+        <CommercialOnly note="The workshop cost build-up — material, labour, coating, NDT and overhead — is commercial and is shown in the internal view.">
         <Card className="p-4">
           <h3 className="text-[12.5px] font-semibold text-mist-200">Workshop cost build-up</h3>
           <div className="mt-3 space-y-1.5">
@@ -171,6 +181,7 @@ export default function MtoPage() {
             the estimate page.
           </p>
         </Card>
+        </CommercialOnly>
       </section>
 
       <section>

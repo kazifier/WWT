@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ViewToggle } from "@/components/view-mode";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -12,6 +13,7 @@ const links = [
   { href: "/mto", label: "BOM / MTO" },
   { href: "/procurement", label: "Procurement" },
   { href: "/estimate", label: "Estimate" },
+  { href: "/options", label: "Options" },
   { href: "/model", label: "Model & drawings" },
   { href: "/assistant", label: "AI assistant" },
   { href: "/documents", label: "Documents" },
@@ -30,10 +32,11 @@ export default function Nav() {
               <div className="text-[9.5px] uppercase tracking-[0.16em] text-mist-400">B047 · WWT package</div>
             </div>
           </Link>
-          <div className="ml-auto hidden items-center gap-3 text-[10px] uppercase tracking-[0.12em] text-mist-400 md:flex">
-            <span>Diwanya Refinery · Iraq</span>
-            <span className="text-ink-600">|</span>
-            <span>500 m³/h</span>
+          <div className="ml-auto flex items-center gap-3 text-[10px] uppercase tracking-[0.12em] text-mist-400">
+            <span className="hidden md:inline">Diwanya Refinery · Iraq</span>
+            <span className="hidden text-ink-600 md:inline">|</span>
+            <span className="hidden md:inline">500 m³/h</span>
+            <ViewToggle />
           </div>
         </div>
         <nav className="-mx-1 flex gap-0.5 overflow-x-auto pb-0.5">

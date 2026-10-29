@@ -70,13 +70,13 @@ export default function MakeBuyPage() {
       <section className="grid gap-3 lg:grid-cols-4">
         <Card className="p-4">
           <div className="text-[10px] uppercase tracking-wide text-mist-400">Make — RAMSIS</div>
-          <div className="mt-1 font-mono text-xl text-emerald-300">{usd(makeValue)}</div>
+          <div className="mt-1 font-mono text-xl text-emerald-300" data-commercial>{usd(makeValue)}</div>
           <div className="text-[11px] text-mist-400">{make.length} tags · {nf((makeValue / (makeValue + buyValue)) * 100, 0)} % of supply</div>
           <div className="mt-2"><Bar value={makeValue} max={makeValue + buyValue} /></div>
         </Card>
         <Card className="p-4">
           <div className="text-[10px] uppercase tracking-wide text-mist-400">Buy — purchased</div>
-          <div className="mt-1 font-mono text-xl text-violet-300">{usd(buyValue)}</div>
+          <div className="mt-1 font-mono text-xl text-violet-300" data-commercial>{usd(buyValue)}</div>
           <div className="text-[11px] text-mist-400">{buy.length} tags · {nf((buyValue / (makeValue + buyValue)) * 100, 0)} % of supply</div>
           <div className="mt-2"><Bar value={buyValue} max={makeValue + buyValue} tone="amber" /></div>
         </Card>
@@ -87,7 +87,7 @@ export default function MakeBuyPage() {
         </Card>
         <Card className="p-4">
           <div className="text-[10px] uppercase tracking-wide text-mist-400">Direct workshop cost</div>
-          <div className="mt-1 font-mono text-xl text-teal-300">{usd(fabrication.total)}</div>
+          <div className="mt-1 font-mono text-xl text-teal-300" data-commercial>{usd(fabrication.total)}</div>
           <div className="text-[11px] text-mist-400">Plate, labour, coating, NDT, consumables</div>
         </Card>
       </section>
@@ -155,7 +155,7 @@ export default function MakeBuyPage() {
                       <div className="text-[10px] text-mist-400">{e.type}</div>
                     </td>
                     <td className="num">{e.qty}</td>
-                    <td className="num">{usd(e.cost_usd * e.qty)}</td>
+                    <td className="num" data-commercial>{usd(e.cost_usd * e.qty)}</td>
                     <td>
                       <Badge tone={e.makeBuy === "MAKE" ? "green" : "violet"}>{e.makeBuy}</Badge>
                     </td>
@@ -324,9 +324,10 @@ export default function MakeBuyPage() {
       </section>
 
       <Callout title="Recommendation" tone="teal">
-        Take the make scope exactly as listed: {make.length} tags worth {usd(makeValue)}, being the fabricated
-        static items with no proprietary process guarantee. Buy the {buy.length} tags worth {usd(buyValue)} that
-        carry a performance guarantee, a rotating element or a governing AVL status. Do not attempt the membrane
+        Take the make scope exactly as listed: {make.length} tags{" "}
+        <span data-commercial>worth {usd(makeValue)}</span>, being the fabricated static items with no proprietary
+        process guarantee. Buy the {buy.length} tags <span data-commercial>worth {usd(buyValue)}</span> that carry a
+        performance guarantee, a rotating element or a governing AVL status. Do not attempt the membrane
         skids, blowers or centrifuges in house — the guarantee exposure outweighs any fabrication margin.
       </Callout>
 

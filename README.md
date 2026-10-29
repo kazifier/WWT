@@ -22,7 +22,8 @@ Refinery Expansion Project, prepared for **RAMSIS Engineering (Bahrain)** agains
 | `/make-buy` | RAMSIS capability assessment and item-by-item make/buy decision with reasoning |
 | `/mto` | Plate and section take-off, weld length, manhours, workshop cost build-up |
 | `/procurement` | Governing vendors plus recommendations for every category the AVL omits |
-| `/estimate` | Capex by line item, opex by driver, 20-year life-cycle cost |
+| `/estimate` | Capex by line item, opex by driver, 20-year life-cycle cost (internal view only) |
+| `/options` | Detailed comparison of the three RFQ discharge options plus the recommended fourth (2R), with a weighted decision matrix |
 | `/model` | Parametric 3D plant model with hazardous-area overlay — equipment, pipe runs, valves, instruments, motors, insulation and pipe racks, plus a 3D view of every item |
 | `/assistant` | Gemini assistant grounded in the dossier |
 | `/documents` | Firebase-backed document vault and review comment trail |
@@ -51,6 +52,18 @@ npm run dev      # http://localhost:3000
 npm run build    # production build (server build, used by Freebuff Sites)
 npx tsc --noEmit # type check
 ```
+
+## External / internal view
+
+The header carries a two-position switch. **Internal** is the working dossier and shows every number, including
+capital, operating and life-cycle cost. **External (client)** removes commercial content: amounts are hidden by the
+`html[data-view="external"] [data-commercial]` rule in `globals.css`, and pages whose whole subject is commercial
+(`/estimate`) show a notice instead of their body via `<CommercialPage>`. The choice is stored in `localStorage`, so
+it survives navigation.
+
+This is presentation-level: the static export still contains the numbers in its payload, and anyone who switches the
+view or reads the page source can see them. Do not treat it as an access control — for a genuinely client-only
+build, ship a version with the cost modules removed.
 
 ## Two deployments from one codebase
 

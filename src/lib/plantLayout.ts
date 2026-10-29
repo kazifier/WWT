@@ -274,16 +274,49 @@ const instrumentParts: PlantPart[] = instruments.flatMap((inst, i) => {
   }));
 });
 
-/** A motor marker sits beside the driven item it belongs to. */
+/**
+ * A motor marker sits beside the driven item it belongs to.
+ *
+ * The motor schedule uses the register equipment tag (`P-2001A/B`) while the
+ * drawing holds one part per physical unit (`P-2001A`, `P-2001B`), so the match
+ * is made on the equipment code rather than the full tag. Where the driven item
+ * is a skid or a package with no individual part on the plot — the dosing skids,
+ * the odour fan — the marker is placed in its area instead of being dropped, so
+ * the motor count in the drawing equals the motor count in the schedule.
+ */
+const equipmentCode = (tag: string) => (tag.match(/^[A-Z]{1,3}-\d{3,4}/) ?? [tag])[0];
+
 const motorParts: PlantPart[] = motors.flatMap((m) => {
-  const host = baseParts.find((p) => p.id === m.tag);
-  if (!host) return [];
-  return Array.from({ length: Math.min(m.qty, 2) }, (_, n) => ({
-    id: m.qty > 1 ? `M-${m.tag}-${n + 1}` : `M-${m.tag}`,
-    label: `${m.kw} kW motor · ${m.starter} · ${m.cable}`,
+  const code = equipmentCode(m.tag);
+  const hosts = baseParts.filter((p) => equipmentCode(p.id) === code);
+
+  if (!hosts.length) {
+    const c = areaCentre(m.area);
+    return [
+      {
+        id: `M-${m.tag}`,
+        label: `${m.kw} kW motor (${m.tag.replace(/^M-/, "")}) · ${m.starter} · ${m.cable}`,
+        kind: "motor" as const,
+        area: m.area,
+        x: +(c.x + 6).toFixed(1),
+        z: +(c.z + 6).toFixed(1),
+        w: 1.2,
+        d: 1.2,
+        h: 1.0,
+        zone: (m.zone ?? "Zone 2") as Zone,
+        color: partColors.motor,
+        designCode: `IEC 60034 · ${m.volts} V · ${m.breaker} A`,
+        makeBuy: "buy" as const,
+      },
+    ];
+  }
+
+  return hosts.slice(0, Math.max(1, Math.min(m.qty, 2))).map((host, n) => ({
+    id: hosts.length > 1 ? `M-${host.id}` : `M-${m.tag}`,
+    label: `${m.kw} kW motor on ${host.id} · ${m.starter} · ${m.cable}`,
     kind: "motor" as const,
-    area: m.area,
-    x: host.x + host.w / 2 + 1.6 + n * 1.4,
+    area: host.area,
+    x: +(host.x + host.w / 2 + 1.6 + n * 1.4).toFixed(1),
     z: host.z,
     w: 1.2,
     d: 1.2,

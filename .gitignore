@@ -7,3 +7,4 @@
 .next/
 *.tsbuildinfo
 /artifacts/*.png
+/.pages-build/

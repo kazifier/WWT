@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "build:pages": "GITHUB_PAGES=1 next build && node scripts/publish-pages.mjs"
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

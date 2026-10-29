@@ -11,7 +11,12 @@ import { process as P } from "@/lib/calc/process";
 import { loadSummary, pumpResults } from "@/lib/calc/mechanical";
 import { mtoTotals, fabrication } from "@/lib/calc/mto";
 import { optionEstimates, opexFor, PV_FACTOR } from "@/lib/calc/cost";
-import { haWithSqm, plot, plotArea_m2, areaBlocks, blockAreaTotal_m2, sqm } from "@/lib/plantLayout";
+import { haWithSqm, plot, plotArea_m2, areaBlocks, blockAreaTotal_m2, sqm, partCounts } from "@/lib/plantLayout";
+import { bulkSheets, bulkTotals } from "@/lib/calc/bulk";
+import { pipeBySize, pipingSummary, valveSchedule, valveTotals } from "@/lib/piping";
+import { instrumentsByArea, ioSummary } from "@/lib/instruments";
+import { motors, motorSummary, powerSummary, trayFill } from "@/lib/electrical";
+import { insulationSummary, paintArea } from "@/lib/insulation";
 
 export function buildProjectContext(): string {
   const layout = `
@@ -29,7 +34,7 @@ Plot U9 layout: ${plot.w} x ${plot.d} m = ${sqm(plotArea_m2)} total. Area envelo
     .map((e) => `${e.tag} | ${e.description} | ${e.qty} off | ${e.duty} | ${e.moc} | ${e.code} | ${e.zone} | ${e.makeBuy} | ${e.avl} | ${e.vendor}`)
     .join("\n");
 
-  const sheets = [...P.sheets].map((s) => `${s.id} ${s.title} (${s.clause})`).join("\n");
+  const sheets = [...P.sheets, ...bulkSheets].map((s) => `${s.id} ${s.title} (${s.clause})`).join("\n");
 
   const costs = optionEstimates
     .map((o) => `${o.name}: capex USD ${(o.total / 1e6).toFixed(1)}M, opex USD ${(opexFor(o.id).total / 1e6).toFixed(2)}M/yr`)
@@ -70,6 +75,15 @@ Electrical: installed ${loadSummary.installed.toFixed(0)} kW, demand ${loadSumma
 
 # PLOT LAYOUT AND AREAS (square metres)
 ${layout}
+
+# BULK DISCIPLINES (piping, valves, instruments, electrical, insulation, racks)
+Piping: ${pipingSummary.lines} lines, ${Math.round(pipingSummary.length_m)} m, ${pipingSummary.pipe_t} t of pipe, ${pipingSummary.fittings_t} t fittings, ${pipingSummary.flanges} flanges/gaskets, ${pipingSummary.bolts} bolts, ${pipingSummary.supports} supports, ${Math.round(pipingSummary.paint_m2)} m2 paint, ${Math.round(pipingSummary.insulation_m2)} m2 insulation. Largest line ${pipingSummary.largest_line}, heaviest ${pipingSummary.heaviest_line} at ${pipingSummary.heaviest_t} t. By size: ${pipeBySize.map((p) => `${p.nps}" ${Math.round(p.length_m)} m (${p.pipe_t} t)`).join("; ")}.
+Valves: ${valveTotals.qty} off in ${valveTotals.types} types, ${valveTotals.actuated} actuated / ${valveTotals.manual} manual, ${valveTotals.control} control valves, ${valveTotals.psv} PSVs. ${valveSchedule.map((v) => `${v.type} ${v.qty}`).join(", ")}.
+Instruments: ${ioSummary.wiredQty + ioSummary.localQty} field devices, ${ioSummary.total} wired I/O (AI ${ioSummary.AI}, AO ${ioSummary.AO}, DI ${ioSummary.DI}, DO ${ioSummary.DO}) against ${ioSummary.capacity} available PCS I/O (${ioSummary.spare_pct} % spare), ${ioSummary.sil2} SIL 2, ${ioSummary.exRated} Ex-rated, ${ioSummary.localQty} local gauges not wired. By area: ${instrumentsByArea.map((a) => `Area ${a.area} ${a.tags} tags / ${a.qty} off`).join("; ")}.
+Electrical: ${motorSummary.count} motors, ${motorSummary.installed_kW} kW connected (${motorSummary.base_kW} kW base excluding the Option 3 ZLD train), ${motorSummary.mvCount} MV at 3.3 kV, ${motorSummary.vfd} VFD. Duty demand ${powerSummary.demand_kW} kW / ${powerSummary.demand_kVA} kVA, transformer TR-9901 ${powerSummary.transformer_kVA} kVA at ${powerSummary.loading_pct} % loading, ${powerSummary.annual_MWh} MWh/yr. Cable tray ${trayFill.tray} at ${trayFill.fill_pct} % fill. Largest feeder ${motorSummary.largest_tag} ${motorSummary.largest_kW} kW. Motors: ${motors.map((m) => `${m.tag} ${m.kw} kW x${m.qty} ${m.volts} V ${m.starter} ${m.cable}`).join("; ")}.
+Insulation: ${Math.round(insulationSummary.area_m2)} m2 of insulation on ${insulationSummary.items} items (${insulationSummary.hotArea_m2} m2 hot, ${insulationSummary.coldArea_m2} m2 cold/personnel), ${Math.round(insulationSummary.jacketing_m2)} m2 jacketing, ${Math.round(insulationSummary.mass_kg)} kg of insulation; bare piping paint area ${paintArea.piping_m2} m2.
+Piperacks and model: ${partCounts.racks} racks totalling ${Math.round(partCounts.rackLength_m)} m, ${bulkTotals.rack_t} t of rack steel; the 3D model carries ${partCounts.total} items (${partCounts.equipment} equipment, ${partCounts.piping} pipe runs, ${partCounts.valves} valve markers, ${partCounts.instruments} instrument stands, ${partCounts.motors} motors, ${partCounts.insulation} insulated surfaces).
+Bulk calculation sheets: ${bulkSheets.map((s) => `${s.id} ${s.title}`).join("; ")}. Open checks in the bulk sheets: ${bulkTotals.open}.
 
 # CALCULATION SHEETS AVAILABLE
 ${sheets}

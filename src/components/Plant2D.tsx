@@ -208,6 +208,74 @@ function EquipmentPlan({ p }: { p: PlantPart }) {
   const small = Math.min(w, d) < 46;
   const stroke = zoneColor[p.zone];
 
+  /* Pipe runs are drawn as a heavy line with a dashed centreline. */
+  if (p.kind === "pipe") {
+    const y = sy(p.z);
+    const x0 = sx(p.x - p.w / 2);
+    const x1 = sx(p.x + p.w / 2);
+    return (
+      <g>
+        <line x1={x0} y1={y} x2={x1} y2={y} stroke={p.color} strokeWidth={Math.max(p.d * S, 3)} strokeOpacity="0.9" />
+        <line x1={x0} y1={y} x2={x1} y2={y} stroke="#cfdde3" strokeWidth={0.7} strokeDasharray="10 7" strokeOpacity="0.55" />
+        <text x={x0 + 4} y={y - 6} className="tag">
+          {p.id}
+        </text>
+        <text x={x0 + 4} y={y + 12} className="dimt">
+          Ø {(p.d * 1000).toFixed(0)} mm · at {(p.y0 ?? 0).toFixed(1)} m
+        </text>
+      </g>
+    );
+  }
+
+  /* Valves: ISA bow-tie symbol. */
+  if (p.kind === "valve") {
+    const y = sy(p.z);
+    const s = Math.max(w, 12);
+    return (
+      <g>
+        <polygon
+          points={`${cx - s},${y - s * 0.6} ${cx - s},${y + s * 0.6} ${cx + s},${y - s * 0.6} ${cx + s},${y + s * 0.6}`}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="1.3"
+        />
+        <text x={cx} y={y - s - 3} textAnchor="middle" className="tag">
+          {p.id}
+        </text>
+      </g>
+    );
+  }
+
+  /* Instruments: instrument bubble with the tag inside. */
+  if (p.kind === "instrument") {
+    const rad = Math.max(w, 13);
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={rad} fill="#0b1418" stroke={stroke} strokeWidth="1.2" strokeDasharray="3 2" />
+        <line x1={cx - rad} y1={cy} x2={cx + rad} y2={cy} stroke={stroke} strokeOpacity="0.6" />
+        <text x={cx} y={cy - rad - 3} textAnchor="middle" className="tag">
+          {p.id}
+        </text>
+      </g>
+    );
+  }
+
+  /* Motors: small square with the frame reference. */
+  if (p.kind === "motor") {
+    const side = Math.max(w, 13);
+    return (
+      <g>
+        <rect x={cx - side / 2} y={cy - side / 2} width={side} height={side} fill="#0b1418" stroke={stroke} strokeWidth="1.2" />
+        <text x={cx} y={cy + 3.5} textAnchor="middle" className="tag">
+          M
+        </text>
+        <text x={cx} y={cy - side / 2 - 3} textAnchor="middle" className="tag">
+          {p.id}
+        </text>
+      </g>
+    );
+  }
+
   const dims =
     circular
       ? `Ø ${p.w.toFixed(1)} m (${foot(p)} m²)`
@@ -394,7 +462,7 @@ export function ElevationDrawing() {
   // south end first in the model; in a north-looking elevation the northern
   // items sit behind, so draw them first and let the near ones overlay.
   const sorted = [...parts].sort((a, b) => b.z - a.z);
-  const maxH = Math.max(...parts.map((p) => p.h));
+  const maxH = Math.max(...parts.map((p) => (p.y0 ?? 0) + p.h));
   const xChain = [0, 25, 50, 75, 100, 125, 150];
 
   return (
@@ -421,8 +489,9 @@ export function ElevationDrawing() {
         {/* equipment, north items drawn behind */}
         {sorted.map((p) => {
           const w = p.w * S;
-          const top = ey(p.h);
-          const h = GROUND - top;
+          const base = p.y0 ?? 0;
+          const top = ey(base + p.h);
+          const h = Math.max(ey(base) - top, 2);
           const circular = p.kind === "tank" || p.kind === "clarifier";
           const stroke = zoneColor[p.zone];
           return (
@@ -455,7 +524,7 @@ export function ElevationDrawing() {
                 {p.id}
               </text>
               <text x={ex(p.x)} y={top + 13} textAnchor="middle" className="dimt">
-                {p.h.toFixed(1)} m
+                {p.h.toFixed(1)} m{base > 0 ? ` @ ${base.toFixed(1)} m` : ""}
               </text>
             </g>
           );

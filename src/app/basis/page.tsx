@@ -1,5 +1,13 @@
 import { Card, Badge, SectionTitle, Callout, nf } from "@/components/ui";
-import { siteData, documentRegister, clarifications, hazardousArea, project } from "@/data/project";
+import {
+  siteData,
+  documentRegister,
+  documentRegisterSummary,
+  documentRegisterAdditions,
+  clarifications,
+  hazardousArea,
+  project,
+} from "@/data/project";
 import { streams, inletParameters, blendedConcentration, riverLimits, reuseLimits } from "@/data/influent";
 
 export const metadata = { title: "Design basis — B047 WWT" };
@@ -9,38 +17,69 @@ export default function BasisPage() {
     <div className="space-y-8">
       <div>
         <SectionTitle eyebrow="Section 1" title="Design basis and battery limits">
-          Transcribed from the five issued documents. Where two documents disagree, the more onerous value is
-          adopted and a formal clarification is raised — the register is at the bottom of this page.
+          Transcribed from the {documentRegisterSummary.total} issued documents covering contract, mechanical,
+          piping, electrical, instrumentation, insulation, painting, safety and procurement. Where two documents
+          disagree, the more onerous value is adopted and a formal clarification is raised below.
         </SectionTitle>
       </div>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card className="overflow-hidden">
-          <div className="border-b border-line px-4 py-2.5">
+          <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
             <h3 className="text-[12.5px] font-semibold text-mist-200">Document register</h3>
+            <span className="font-mono text-[10px] text-mist-400">
+              {documentRegisterSummary.total} documents · {documentRegisterSummary.pages} pages
+            </span>
           </div>
-          <table className="grid-table">
-            <thead>
-              <tr>
-                <th>Document</th>
-                <th>Rev</th>
-                <th>Role in this package</th>
-              </tr>
-            </thead>
-            <tbody>
-              {documentRegister.map((d) => (
-                <tr key={d.docNo}>
-                  <td>
-                    <div className="font-mono text-[11px] text-teal-300">{d.docNo}</div>
-                    <div className="mt-0.5 text-[11px] text-mist-300">{d.title}</div>
-                    <div className="mt-0.5 text-[10px] text-mist-400">{d.status}</div>
-                  </td>
-                  <td className="num">{d.rev}</td>
-                  <td className="text-[11px] text-mist-400">{d.role}</td>
+          <div className="max-h-[620px] overflow-y-auto scroll-x">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>Document</th>
+                  <th>Rev</th>
+                  <th>Discipline</th>
+                  <th>Role and what is applied here</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {documentRegister.map((d) => (
+                  <tr key={d.docNo}>
+                    <td className="min-w-[220px]">
+                      <div className="font-mono text-[11px] text-teal-300">{d.docNo}</div>
+                      <div className="mt-0.5 text-[11px] text-mist-300">{d.title}</div>
+                      <div className="mt-0.5 text-[10px] text-mist-400">
+                        {d.status} · {d.pages} pp
+                      </div>
+                    </td>
+                    <td className="num">{d.rev}</td>
+                    <td>
+                      <Badge
+                        tone={
+                          d.discipline === "Piping"
+                            ? "teal"
+                            : d.discipline === "Electrical & instruments"
+                              ? "violet"
+                              : d.discipline === "Quality"
+                                ? "amber"
+                                : d.discipline === "Mechanical"
+                                  ? "slate"
+                                  : "slate"
+                        }
+                      >
+                        {d.discipline}
+                      </Badge>
+                    </td>
+                    <td className="min-w-[240px] text-[11px] text-mist-400">
+                      {d.role}
+                      <div className="mt-1 border-l-2 border-teal-500/40 pl-2 text-[10.5px] text-mist-300">
+                        {d.applied}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         <Card className="overflow-hidden">
@@ -105,6 +144,26 @@ export default function BasisPage() {
               </div>
             ))}
           </div>
+        </Card>
+      </section>
+
+      {/* What the added documents changed */}
+      <section>
+        <SectionTitle eyebrow="Register update" title="Documents added to the dossier and what they changed" />
+        <Card className="p-4">
+          <div className="space-y-2">
+            {documentRegisterAdditions.map((a) => (
+              <div key={a.docNo} className="grid gap-1 border-b border-line/60 pb-2 md:grid-cols-[220px_1fr]">
+                <span className="font-mono text-[10.5px] text-teal-300">{a.docNo}</span>
+                <span className="text-[11px] leading-relaxed text-mist-400">{a.what}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-mist-400">
+            These documents are not just referenced — each one drives a calculation sheet on the calculations page,
+            a row in the 3D model, and a quantity in the MTO. Piping classes, valve and gasket counts, cable sizes,
+            instrument I/O, insulation thickness and coating area all come from them.
+          </p>
         </Card>
       </section>
 

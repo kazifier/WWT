@@ -2,6 +2,12 @@ import { Card, Badge, SectionTitle, Callout, usd, nf, Bar } from "@/components/u
 import { equipment, equipmentSummary } from "@/data/equipment";
 import { avlCategories, avlRules } from "@/data/vendors";
 import { mtoTotals, fabrication } from "@/lib/calc/mto";
+import { pipingSummary, valveTotals } from "@/lib/piping";
+import { ioSummary } from "@/lib/instruments";
+import { motorSummary, trayFill } from "@/lib/electrical";
+import { insulationSummary, paintArea } from "@/lib/insulation";
+import { partCounts } from "@/lib/plantLayout";
+import { bulkTotals } from "@/lib/calc/bulk";
 
 export const metadata = { title: "Make vs buy — B047 WWT" };
 
@@ -157,6 +163,107 @@ export default function MakeBuyPage() {
                     <td>
                       <Badge tone={e.avl === "Governing" ? "amber" : e.avl === "Non-governing" ? "teal" : "slate"}>{e.avl}</Badge>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </section>
+
+      {/* Bulk disciplines */}
+      <section>
+        <SectionTitle eyebrow="Bulk scope" title="Piping, valves, instruments, motors, insulation and racks">
+          The same three tests are applied to the bulk disciplines. Fabrication is kept where it is welding and
+          steelwork — spools, supports, racks, cladding and coating — and everything with a proprietary rating,
+          a certificate or a catalogue number is bought.
+        </SectionTitle>
+        <Card className="overflow-hidden">
+          <div className="scroll-x">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>Discipline</th>
+                  <th>Scope item</th>
+                  <th className="text-right">Quantity</th>
+                  <th>Decision</th>
+                  <th>Where it goes / who supplies it</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [
+                    "Piping",
+                    "Bulk pipe, fittings, flanges, gaskets, bolting",
+                    `${nf(pipingSummary.pipe_t, 1)} t · ${pipingSummary.flanges} flanges`,
+                    "BUY",
+                    "Pipe mill and fittings stockholder against PP-SPE-0002 classes; 316L is the long-lead item. Gaskets to B16.20 spiral wound, bolting A193 B7 / A194 2H.",
+                  ],
+                  [
+                    "Piping",
+                    "Spool fabrication, supports and spring hangers",
+                    `${nf(pipingSummary.length_m, 0)} m · ${pipingSummary.supports} supports`,
+                    "MAKE",
+                    "RAMSIS spool shop: cutting, bevelling, TIG root and GTAW fill on 316L, hydrotest packs by area. Supports to MSS SP-58 from the same plate take-off.",
+                  ],
+                  [
+                    "Valves",
+                    "Gate, globe, check, ball, butterfly, control, PSV",
+                    `${valveTotals.qty} off (${valveTotals.actuated} actuated)`,
+                    "BUY",
+                    "Non-governing catalogue items — buy against the class. Control valves and PSVs are governing: size and select with the vendor, not from stock.",
+                  ],
+                  [
+                    "Instruments",
+                    "Transmitters, analysers, switches, gauges, positioners",
+                    `${ioSummary.wiredQty + ioSummary.localQty} off · ${ioSummary.total} I/O`,
+                    "BUY",
+                    "Endress+Hauser, Emerson/Rosemount, Yokogawa (recommended where not on the AVL). Ex ia IIC T4 certification is mandatory in Zone 0.",
+                  ],
+                  [
+                    "Electrical",
+                    "Motors, VFDs, cables, trays, junction boxes",
+                    `${motorSummary.count} motors · ${nf(motorSummary.cable_m, 0)} m cable`,
+                    "BUY",
+                    "Motors and drives from the AVL motor vendors; cable and tray from a Gulf stockholder. Tray fill checked at " + `${trayFill.fill_pct} %` + " on the 300 mm ladder.",
+                  ],
+                  [
+                    "Electrical",
+                    "MCC, PCC and control panels — enclosure and assembly",
+                    `${trayFill.tray}`,
+                    "MAKE",
+                    "Panel assembly and wiring can be done in Bahrain under IEC 61439 with bought-in breakers and drives; the Form 4b type test certificate stays with the component vendor.",
+                  ],
+                  [
+                    "Piperacks",
+                    "Rack steel, bents, bracing, base plates",
+                    `${partCounts.racks} racks · ${nf(partCounts.rackLength_m, 0)} m · ~${nf(bulkTotals.rack_t, 1)} t`,
+                    "MAKE",
+                    "Ideal make item: hot-rolled sections, bolted bents, galvanised or painted in the same shop. Ships as loose steel, erects in days.",
+                  ],
+                  [
+                    "Insulation",
+                    "Rock wool, cellular glass, PUF, aluminium jacketing",
+                    `${nf(insulationSummary.area_m2, 0)} m² · ${nf(insulationSummary.mass_kg / 1000, 1)} t`,
+                    "MAKE",
+                    "Material bought from an insulation stockholder; RAMSIS applies it with its own cladding crew — the labour, not the material, is the make content.",
+                  ],
+                  [
+                    "Painting",
+                    "Blast and coating system",
+                    `${nf(paintArea.piping_m2 + mtoTotals.coating_m2, 0)} m²`,
+                    "MAKE",
+                    "Paint bought to QC-SPC-001; application in the RAMSIS blast and paint shop, DFT and holiday tested before dispatch.",
+                  ],
+                ].map((r) => (
+                  <tr key={r[0] + r[1]}>
+                    <td className="whitespace-nowrap text-mist-300">{r[0]}</td>
+                    <td className="min-w-[250px] text-mist-200">{r[1]}</td>
+                    <td className="num whitespace-nowrap">{r[2]}</td>
+                    <td>
+                      <Badge tone={r[3] === "MAKE" ? "green" : "violet"}>{r[3]}</Badge>
+                    </td>
+                    <td className="min-w-[340px] text-[10.5px] leading-relaxed text-mist-400">{r[4]}</td>
                   </tr>
                 ))}
               </tbody>

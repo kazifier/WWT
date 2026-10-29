@@ -14,7 +14,13 @@ import {
   foot,
   sqm,
   haWithSqm,
+  partCounts,
 } from "@/lib/plantLayout";
+import { pipingSummary, valveTotals } from "@/lib/piping";
+import { ioSummary } from "@/lib/instruments";
+import { motorSummary } from "@/lib/electrical";
+import { insulationSummary } from "@/lib/insulation";
+import { bulkTotals } from "@/lib/calc/bulk";
 
 const skeleton = (h: string) => (
   <div
@@ -93,7 +99,11 @@ export default function ModelPage() {
         </Badge>
         <Badge tone="slate">Equipment footprint {sqm(totalFootprint, 1)}</Badge>
         <Badge tone="amber">{nf(plotOccupancy, 1)} % plot occupancy</Badge>
-        <Badge tone="violet">{parts.length} items modelled · {parts.filter(p => p.makeBuy === 'make').length} make (RAMSIS) · {parts.filter(p => p.makeBuy === 'buy').length} buy (vendor) · Option 3 ZLD toggle</Badge>
+        <Badge tone="violet">
+          {parts.length} items modelled · {partCounts.equipment} equipment · {partCounts.piping} pipe runs ·{" "}
+          {partCounts.valves} valves · {partCounts.instruments} instruments · {partCounts.motors} motors ·{" "}
+          {partCounts.insulation} insulated surfaces
+        </Badge>
       </div>
 
       {/* ---------------------------------------------------------- */}
@@ -209,6 +219,100 @@ export default function ModelPage() {
       </section>
 
       {/* ---------------------------------------------------------- */}
+      {/* discipline schedule                                         */}
+      {/* ---------------------------------------------------------- */}
+      <section className="space-y-2">
+        <h3 className="text-[12.5px] font-semibold text-mist-200">
+          4a · Discipline schedule — what is modelled and what it carries
+        </h3>
+        <Card className="overflow-hidden">
+          <div className="scroll-x">
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>Discipline</th>
+                  <th>Item</th>
+                  <th className="text-right">Modelled</th>
+                  <th className="text-right">Quantity</th>
+                  <th>Source document</th>
+                  <th>In the drawing as</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [
+                    "Piping",
+                    "Process lines",
+                    `${partCounts.piping}`,
+                    `${nf(pipingSummary.length_m, 0)} m · ${nf(pipingSummary.pipe_t, 1)} t`,
+                    "PP-SPE-0002 Rev-2",
+                    "One spool per line at its own OD, on the rack at its real elevation",
+                  ],
+                  [
+                    "Valves",
+                    "Gate, globe, check, ball, butterfly, control, PSV",
+                    `${partCounts.valves}`,
+                    `${valveTotals.qty} off`,
+                    "PP-BOD-0001 / B16.34",
+                    "Valve body markers on the run, one per in-line type per line",
+                  ],
+                  [
+                    "Instruments",
+                    "Transmitters, analysers, switches, gauges",
+                    `${partCounts.instruments}`,
+                    `${ioSummary.wiredQty + ioSummary.localQty} off · ${ioSummary.total} I/O`,
+                    "IC-BOD-0001 Rev-1",
+                    "Instrument stand with tag bubble, zone-certified",
+                  ],
+                  [
+                    "Electrical",
+                    "Motors and drives",
+                    `${partCounts.motors}`,
+                    `${motorSummary.count} off · ${nf(motorSummary.installed_kW, 0)} kW`,
+                    "EL-BOD-0001 Rev-0",
+                    "Motor block beside its driven item, cable route to the MCC",
+                  ],
+                  [
+                    "Electrical",
+                    "Cable tray route and panels",
+                    "1 tray · 8 panels",
+                    "300 × 100 ladder",
+                    "EL-BOD-0001 §10.29",
+                    "Ladder tray along the rack, MCC/transformer bays in area 99",
+                  ],
+                  [
+                    "Insulation",
+                    "Pipe and equipment insulation",
+                    `${partCounts.insulation}`,
+                    `${nf(insulationSummary.area_m2, 0)} m² · ${nf(insulationSummary.mass_kg / 1000, 1)} t`,
+                    "ME-SPE-0014",
+                    "Translucent sleeve over the run or shell, at specification thickness",
+                  ],
+                  [
+                    "Piperacks",
+                    "Main, area 30 and area 70 racks",
+                    `${partCounts.racks}`,
+                    `${nf(partCounts.rackLength_m, 0)} m · ~${nf(bulkTotals.rack_t, 1)} t`,
+                    "MSS SP-58 / AISC 360",
+                    "Bents, columns, tier beams and bracing to scale",
+                  ],
+                ].map((r) => (
+                  <tr key={r[0] + r[1]}>
+                    <td className="whitespace-nowrap text-mist-300">{r[0]}</td>
+                    <td className="min-w-[200px] text-mist-200">{r[1]}</td>
+                    <td className="num">{r[2]}</td>
+                    <td className="num whitespace-nowrap">{r[3]}</td>
+                    <td className="whitespace-nowrap font-mono text-[10px] text-mist-400">{r[4]}</td>
+                    <td className="min-w-[260px] text-[10.5px] leading-relaxed text-mist-400">{r[5]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </section>
+
+      {/* ---------------------------------------------------------- */}
       {/* per-equipment 3D                                            */}
       {/* ---------------------------------------------------------- */}
       <section className="space-y-2">
@@ -279,7 +383,10 @@ export default function ModelPage() {
       <Card className="p-4">
         <h3 className="text-[12.5px] font-semibold text-mist-200">Design basis documents</h3>
         <div className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-mist-400">
-          <p>All 5 items on this plot carry the codes and requirements from the approved design basis:</p>
+          <p>
+            All {partCounts.total} modelled items — equipment, piping, valves, instruments, motors, cable trays,
+            insulation and racks — carry the codes and requirements from the approved design basis documents:
+          </p>
           <ul className="mt-1 space-y-1 text-[10.5px] text-mist-400">
             <li><span className="text-teal-300">B047-ABG-99-ME-BOD-0001 Rev-1</span> — Static equipment: ASME VIII Div.1, TEMA R, ASME B31.3, ASME B16.5, ASME B16.20, ASME II/IX/V. Wind: ASCE 7-2010 (180 km/hr, scale factor 0.6). Seismic: UBC 1997 (zone 1, Ca=0.12, Cv=0.18). Design life: 20 years. Min ambient: +1°C.</li>
             <li><span className="text-teal-300">B047-ABG-99-ME-BOD-0002 Rev-0</span> — Rotating equipment: API 610 (centrifugal pumps), API 675 (dosing pumps), API 618/617 (compressors), API 673 (blowers), API 661 (fans), API 650/671 (mixers), API 682 (mechanical seals), IEC 60034 (motors). Design life: 20 years. Min ambient: -5°C. Site elevation: 330.4 m.</li>
@@ -318,16 +425,17 @@ export default function ModelPage() {
       <Card className="p-4">
         <h3 className="text-[12.5px] font-semibold text-mist-200">What the 3D model shows</h3>
         <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-mist-400">
-          <li>All 33 equipment items including pumps (API 610/675), mixers, heat exchangers (TEMA R), electrical panels (MV/LV, MCC, transformer, UPS), cable tray route and lightning arrestor tower.</li>
+          <li>{partCounts.equipment} equipment items including pumps (API 610/675), mixers, heat exchangers (TEMA R), electrical panels (MV/LV, MCC, transformer, UPS), cable tray route and lightning arrestor tower.</li>
+          <li>{partCounts.piping} pipe runs on their racks at real elevation, with {partCounts.valves} valve markers, {partCounts.instruments} instrument stands, {partCounts.motors} motors and {partCounts.insulation} insulated surfaces.</li>
+          <li>{partCounts.racks} pipe racks ({nf(partCounts.rackLength_m, 0)} m) carrying the runs, with the supports the MTO counts.</li>
           <li>Hazardous area colour rings per IEC 60079 / drawing B047-ABG-03-PR-LAY-0001 Rev 4 Note 17: Zone 0 (red), Zone 1 (amber), Zone 2 (teal), Unclassified (grey).</li>
           <li>Each item tagged with its design code from the BOD documents (e.g. "ASME VIII Div.1", "API 610", "IEC 62271", "TEMA R / API 660").</li>
           <li>Make/buy indicator: green = Ramsis Bahrain manufacture, violet = purchased from approved vendor.</li>
         </ul>
         <h3 className="mt-3 text-[12.5px] font-semibold text-mist-200">What it deliberately omits</h3>
         <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-mist-400">
-          <li>Detailed pipe routing, pipe stress analysis, pipe flexibilities (these come from the detailed piping model per PP-BOD-0001).</li>
-          <li>Cable route schedules, cable sizing, cable tray fill calculations (EL-BOD-0001 section 10.29).</li>
-          <li>Structural steel support frames, foundation design, anchor bolt layouts.</li>
+          <li>Pipe stress analysis and flexibility — the line list geometry here is for coordination, not for the stress case (PP-BOD-0001 §7).</li>
+          <li>Foundation design, anchor bolt layouts and buried-servicing details.</li>
           <li>Buried piping, cathodic protection (EL-BOD-0001 section 10.22), fire water piping.</li>
           <li>Buried drainage, sumps, below-grade Zone 1 network.</li>
           <li>Civil foundations, bund walls, and the evaporation pond for Option 2R (outside plot U9).</li>

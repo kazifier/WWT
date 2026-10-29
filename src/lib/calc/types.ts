@@ -26,7 +26,17 @@ export interface CalcCheck {
 export interface CalcSheet {
   id: string;
   title: string;
-  discipline: "Process" | "Mechanical" | "Rotating" | "Electrical" | "Civil" | "Cost";
+  discipline:
+    | "Process"
+    | "Mechanical"
+    | "Rotating"
+    | "Piping"
+    | "Instruments"
+    | "Electrical"
+    | "Insulation"
+    | "Structural"
+    | "Civil"
+    | "Cost";
   clause: string;
   intent: string;
   inputs: CalcInput[];

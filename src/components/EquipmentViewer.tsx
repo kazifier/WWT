@@ -654,6 +654,116 @@ export function Painting({ p }: { p: PlantPart }) {
 }
 
 
+/* ------------------------------------------------------------------ */
+/* bulk disciplines                                                    */
+/* ------------------------------------------------------------------ */
+
+/** A pipe spool drawn to the line's outside diameter, with flanges at each end. */
+export function PipeRun({ p }: { p: PlantPart }) {
+  const r = Math.max(p.d, 0.06) / 2;
+  const flangeR = r * 1.55;
+  return (
+    <group>
+      <mesh position={[0, r, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
+        <cylinderGeometry args={[r, r, p.w, 24]} />
+        <meshStandardMaterial color={p.color} metalness={0.6} roughness={0.4} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[(s * (p.w - 0.12)) / 2, r, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[flangeR, flangeR, 0.12, 24]} />
+          <meshStandardMaterial color="#7f9aa6" metalness={0.5} roughness={0.5} />
+        </mesh>
+      ))}
+      <Dim from={[-p.w / 2, 0.04, -p.d - 1.2]} to={[p.w / 2, 0.04, -p.d - 1.2]} label={`${p.w.toFixed(1)} m run`} />
+      <Dim from={[p.w / 2 + 1.5, 0, 0]} to={[p.w / 2 + 1.5, p.d, 0]} label={`Ø ${(p.d * 1000).toFixed(0)} mm`} />
+    </group>
+  );
+}
+
+/** Gate / globe / check valve body with a handwheel or actuator. */
+export function Valve({ p }: { p: PlantPart }) {
+  const bodyH = Math.max(p.h * 0.55, 0.35);
+  return (
+    <group>
+      {/* body */}
+      <mesh position={[0, bodyH / 2 + p.h * 0.15, 0]} castShadow>
+        <sphereGeometry args={[p.w / 2, 20, 16]} />
+        <meshStandardMaterial color={p.color} metalness={0.55} roughness={0.45} />
+      </mesh>
+      {/* stem */}
+      <mesh position={[0, bodyH + p.h * 0.35, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, p.h * 0.5, 12]} />
+        <meshStandardMaterial color="#7f9aa6" metalness={0.6} />
+      </mesh>
+      {/* handwheel or actuator */}
+      <mesh position={[0, bodyH + p.h * 0.62, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[Math.max(p.w * 0.42, 0.18), 0.04, 10, 24]} />
+        <meshStandardMaterial color="#d2703f" metalness={0.4} />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 1.6]} to={[p.w / 2, 0.04, p.d / 2 + 1.6]} label={`${p.w.toFixed(2)} m`} />
+      <Dim from={[p.w / 2 + 1.2, 0, 0]} to={[p.w / 2 + 1.2, p.h, 0]} label={`${p.h.toFixed(2)} m`} />
+    </group>
+  );
+}
+
+/** Field instrument: stand, transmitter housing and impulse connection. */
+export function Instrument({ p }: { p: PlantPart }) {
+  return (
+    <group>
+      <mesh position={[0, p.h * 0.3, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, p.h * 0.6, 12]} />
+        <meshStandardMaterial color="#7f9aa6" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, p.h * 0.78, 0]} castShadow>
+        <cylinderGeometry args={[p.w * 0.45, p.w * 0.45, 0.34, 20]} />
+        <meshStandardMaterial color={p.color} metalness={0.35} roughness={0.6} />
+      </mesh>
+      <mesh position={[0, p.h * 0.78, p.d * 0.45]}>
+        <boxGeometry args={[p.w * 0.42, 0.16, 0.05]} />
+        <meshStandardMaterial color="#cfdde3" emissive="#6fe0d1" emissiveIntensity={0.2} />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 1]} to={[p.w / 2, 0.04, p.d / 2 + 1]} label={`Ø ${(p.w * 1000).toFixed(0)} mm`} />
+      <Dim from={[p.w / 2 + 1, 0, 0]} to={[p.w / 2 + 1, p.h, 0]} label={`${p.h.toFixed(1)} m`} />
+    </group>
+  );
+}
+
+/** Motor: frame, cooling fins, terminal box and shaft coupling. */
+export function Motor({ p }: { p: PlantPart }) {
+  const r = Math.max(p.w, 0.4) / 2;
+  return (
+    <group>
+      <mesh position={[0, p.h / 2, 0]} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
+        <cylinderGeometry args={[r, r, p.h * 1.5, 24]} />
+        <meshStandardMaterial color={p.color} metalness={0.4} roughness={0.6} />
+      </mesh>
+      {/* cooling fins along the frame */}
+      {Array.from({ length: 8 }, (_, i) => (
+        <mesh
+          key={i}
+          position={[(-0.6 + i * 0.17) * p.h, p.h / 2, 0]}
+          rotation={[0, 0, Math.PI / 2]}
+        >
+          <cylinderGeometry args={[r * 1.08, r * 1.08, 0.03, 20]} />
+          <meshStandardMaterial color="#425e6a" metalness={0.4} />
+        </mesh>
+      ))}
+      {/* terminal box */}
+      <mesh position={[0, p.h / 2 + r * 0.92, 0]}>
+        <boxGeometry args={[0.28, 0.18, 0.22]} />
+        <meshStandardMaterial color="#20343e" />
+      </mesh>
+      {/* shaft */}
+      <mesh position={[p.h * 0.78, p.h / 2, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[r * 0.22, r * 0.22, 0.3, 12]} />
+        <meshStandardMaterial color="#7f9aa6" metalness={0.7} />
+      </mesh>
+      <Dim from={[-p.w / 2, 0.04, p.d / 2 + 1.4]} to={[p.w / 2, 0.04, p.d / 2 + 1.4]} label={`${p.w.toFixed(2)} m`} />
+      <Dim from={[p.w / 2 + 1.2, 0, 0]} to={[p.w / 2 + 1.2, p.h, 0]} label={`${p.h.toFixed(2)} m`} />
+    </group>
+  );
+}
+
 const COMPONENTS: Partial<Record<PlantPart["kind"], (props: { p: PlantPart }) => React.JSX.Element>> = {
   tank: Tank,
   basin: Basin,
@@ -674,6 +784,10 @@ const COMPONENTS: Partial<Record<PlantPart["kind"], (props: { p: PlantPart }) =>
   "local-control-panel": LocalControlPanel,
   "instrument-panel": InstrumentPanel,
   lightning: LightningTower,
+  pipe: PipeRun,
+  valve: Valve,
+  instrument: Instrument,
+  motor: Motor,
 };
 
 /** Frames the camera on the item so a 4 m tank and a 55 m cable run both read. */

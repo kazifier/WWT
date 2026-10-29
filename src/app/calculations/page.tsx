@@ -4,10 +4,22 @@ import { useMemo, useState } from "react";
 import { Card, Badge, SectionTitle, Check } from "@/components/ui";
 import { process as P } from "@/lib/calc/process";
 import { mechanicalSheets } from "@/lib/calc/mechanical";
+import { bulkSheets } from "@/lib/calc/bulk";
 import type { CalcSheet } from "@/lib/calc/types";
 
-const allSheets: CalcSheet[] = [...P.sheets, ...mechanicalSheets];
-const disciplines = ["All", "Process", "Mechanical", "Rotating", "Electrical", "Civil"];
+const allSheets: CalcSheet[] = [...P.sheets, ...mechanicalSheets, ...bulkSheets];
+const disciplines = [
+  "All",
+  "Process",
+  "Mechanical",
+  "Rotating",
+  "Piping",
+  "Instruments",
+  "Electrical",
+  "Insulation",
+  "Structural",
+  "Civil",
+];
 
 export default function CalculationsPage() {
   const [discipline, setDiscipline] = useState("All");
@@ -64,6 +76,28 @@ export default function CalculationsPage() {
           {open.length === sheets.length ? "Collapse all" : "Expand all"}
         </button>
       </div>
+
+      <Card className="p-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10.5px] text-mist-400">
+          <span className="uppercase tracking-[0.12em]">Coverage</span>
+          {[
+            ["Process", "treatment train"],
+            ["Mechanical", "vessels, tanks, exchangers"],
+            ["Rotating", "pumps, mixers, blowers, compressors"],
+            ["Piping", "line sizing, wall thickness, valves, hydrotest"],
+            ["Instruments", "I/O count and SIL"],
+            ["Electrical", "motors, cables, trays, transformer"],
+            ["Insulation", "heat loss and cladding"],
+            ["Structural", "piperacks and supports"],
+          ].map(([d, what]) => (
+            <span key={d} className="flex items-baseline gap-1">
+              <span className="font-mono text-teal-300">{allSheets.filter((s) => s.discipline === d).length}</span>
+              <span className="text-mist-300">{d}</span>
+              <span className="text-mist-400/80">({what})</span>
+            </span>
+          ))}
+        </div>
+      </Card>
 
       <div className="space-y-3">
         {sheets.map((s) => {

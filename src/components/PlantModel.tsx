@@ -26,6 +26,10 @@ import {
   PipeFrame,
   Insulation,
   Painting,
+  PipeRun,
+  Valve,
+  Instrument,
+  Motor,
 } from "@/components/EquipmentViewer";
 
 export default function PlantModel() {
@@ -92,7 +96,7 @@ export default function PlantModel() {
 
         <DimContext.Provider value={dimValue}>
           {visible.map((p) => (
-            <group key={p.id} position={[p.x, 0, p.z]}>
+            <group key={p.id} position={[p.x, p.y0 ?? 0, p.z]}>
               {p.kind === "tank" && <Tank p={p} />}
               {p.kind === "basin" && <Basin p={p} />}
               {p.kind === "clarifier" && <Clarifier p={p} />}
@@ -112,6 +116,10 @@ export default function PlantModel() {
               {p.kind === "pipe-frame" && <PipeFrame p={p} />}
               {p.kind === "insulation" && <Insulation p={p} />}
               {p.kind === "painting" && <Painting p={p} />}
+              {p.kind === "pipe" && <PipeRun p={p} />}
+              {p.kind === "valve" && <Valve p={p} />}
+              {p.kind === "instrument" && <Instrument p={p} />}
+              {p.kind === "motor" && <Motor p={p} />}
             </group>
           ))}
         </DimContext.Provider>

@@ -9,7 +9,15 @@
  * Coordinates are metres, measured from the centre of plot U9:
  *   +x runs along the 150 m plot length (west → east)
  *   +z runs along the 90 m plot depth (south → north)
+ *
+ * Equipment comes from the register; piping, valves, instruments and motors are
+ * placed from their own schedules so the drawing and the take-off agree.
  */
+
+import { outsideDiameter, pipeLines } from "@/lib/piping";
+import { instruments } from "@/lib/instruments";
+import { motors } from "@/lib/electrical";
+import { insulationItems } from "@/lib/insulation";
 
 export type PartKind =
   | "tank"
@@ -28,7 +36,9 @@ export type PartKind =
   | "control-panel"
   | "local-control-panel"
   | "instrument-panel"
-  | "pipe-rack"
+  | "pipe"
+  | "valve"
+  | "instrument"
   | "pipe-frame"
   | "insulation"
   | "painting"
@@ -45,6 +55,8 @@ export interface PlantPart {
   /** Centre of the item, metres. */
   x: number;
   z: number;
+  /** Elevation of the underside, metres above grade. Pipes run on racks. */
+  y0?: number;
   /** Footprint and height, metres. */
   w: number;
   d: number;
@@ -84,6 +96,9 @@ export const partColors: Record<PartKind, string> = {
   "local-control-panel": "#2d5a70",
   "instrument-panel": "#2d5a70",
   "pipe-frame": "#425e6a",
+  pipe: "#5a8fa6",
+  valve: "#e0a94a",
+  instrument: "#8b7fd4",
   insulation: "#a0a0a0",
   painting: "#f5f5f5",
 };
@@ -108,7 +123,7 @@ export const plotArea_m2 = plot.w * plot.d;
  *   ME-BOD-0002 Rev-0: rotating equipment (pumps, mixers, centrifuges)
  *   EL-BOD-0001 Rev-0: electrical equipment (transformers, switchgear, MCC, motors)
  */
-export const parts: PlantPart[] = [
+const baseParts: PlantPart[] = [
   // --- Area 10: Chemical Drain Neutralisation ---
   { id: "V-1001", label: "Neutralisation", kind: "tank", area: "10", x: -52, z: 26, w: 4, d: 4, h: 5.5, zone: "Zone 2", color: partColors.tank, designCode: "ASME VIII Div.1", makeBuy: "make" },
   { id: "T-9002/3", label: "Chemical storage", kind: "tank", area: "10", x: -52, z: 14, w: 3, d: 3, h: 4.5, zone: "Zone 2", color: partColors.tank, designCode: "ASME VIII Div.1", makeBuy: "make" },
@@ -167,6 +182,231 @@ export const parts: PlantPart[] = [
   { id: "ZLD-9501", label: "ZLD (Option 3)", kind: "rack-frame", area: "95", x: 72, z: 30, w: 22, d: 10, h: 8, zone: "Unclassified", color: partColors["rack-frame"], designCode: "ASME VIII Div.1", makeBuy: "buy" },
 ];
 
+/* ------------------------------------------------------------------ */
+/* Bulk disciplines on the layout                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Piping, valves, instruments and motors are placed from their own schedules
+ * rather than by hand, so the drawing carries the same population as the MTO.
+ *
+ * Pipe runs sit on the racks at their real elevations: the main rack at 4.2 m,
+ * the area racks lower. Each run is one spool drawn to the line's own OD, and
+ * every in-line valve type on that line gets one marker so the valve count is
+ * visible on the model as well as in the schedule.
+ */
+const RACK_Z = 38;
+const RACK_Y = 4.2;
+
+const pipeParts: PlantPart[] = pipeLines.map((l, i) => {
+  const od = outsideDiameter(l.nps) / 1000;
+  const lane = i % 3;
+  const level = Math.floor(i / 3) % 3;
+  return {
+    id: `${l.nps}"-${l.lineNo.split("-")[1]}-${l.lineNo.split("-")[2]}`,
+    label: `${l.lineNo} · ${l.service}`,
+    kind: "pipe",
+    area: l.area,
+    x: 0,
+    z: RACK_Z + lane * 1.4 - 1.4,
+    y0: RACK_Y + level * 0.7,
+    w: 96,
+    d: Math.max(od, 0.12),
+    h: Math.max(od, 0.12),
+    zone: l.zone,
+    color: partColors.pipe,
+    designCode: `PP-SPE-0002 ${l.pipeClass} · sch ${l.schedule}`,
+    makeBuy: "make",
+  };
+});
+
+const valveParts: PlantPart[] = pipeLines.flatMap((l, i) => {
+  const od = outsideDiameter(l.nps) / 1000;
+  const lane = i % 3;
+  const level = Math.floor(i / 3) % 3;
+  const types = [...new Set(l.valves.map((v) => v.type))];
+  return types.map((type, k) => ({
+    id: `${type.toUpperCase().slice(0, 3)}-${l.lineNo.split("-")[1]}-${l.lineNo.split("-")[2]}${k || ""}`,
+    label: `${type} valve on ${l.lineNo} · ${l.nps}" ${l.pipeClass}`,
+    kind: "valve" as const,
+    area: l.area,
+    x: 10 + k * 7 + (i % 4) * 6,
+    z: RACK_Z + lane * 1.4 - 1.4,
+    y0: RACK_Y + level * 0.7 + od / 2,
+    w: Math.max(0.75, od * 1.6),
+    d: Math.max(0.6, od * 1.2),
+    h: Math.max(0.7, od * 1.6),
+    zone: l.zone,
+    color: partColors.valve,
+    designCode: "PP-BOD-0001 · ASME B16.34",
+    makeBuy: "buy" as const,
+  }));
+});
+
+/** Instrument positions ring their register area, offset from the equipment. */
+const areaCentre = (area: string) => {
+  const rows = baseParts.filter((p) => p.area === area);
+  if (!rows.length) return { x: 0, z: 0 };
+  return {
+    x: rows.reduce((a, p) => a + p.x, 0) / rows.length,
+    z: rows.reduce((a, p) => a + p.z, 0) / rows.length,
+  };
+};
+
+const instrumentParts: PlantPart[] = instruments.flatMap((inst, i) => {
+  const c = areaCentre(inst.area);
+  const angle = (i % 8) * (Math.PI / 4);
+  const r = 11 + (i % 3) * 1.6;
+  return Array.from({ length: Math.min(inst.qty, 6) }, (_, n) => ({
+    id: inst.qty > 1 ? `${inst.tag}-${n + 1}` : inst.tag,
+    label: `${inst.tag} · ${inst.type} · ${inst.service}`,
+    kind: "instrument" as const,
+    area: inst.area,
+    x: +(c.x + Math.cos(angle) * (r + n * 0.9)).toFixed(1),
+    z: +(c.z + Math.sin(angle) * (r + n * 0.9)).toFixed(1),
+    w: 0.5,
+    d: 0.5,
+    h: 1.4,
+    zone: inst.zone,
+    color: partColors.instrument,
+    designCode: `IC-BOD-0001 · ${inst.io} · ${inst.signal}`,
+    makeBuy: "buy" as const,
+  }));
+});
+
+/** A motor marker sits beside the driven item it belongs to. */
+const motorParts: PlantPart[] = motors.flatMap((m) => {
+  const host = baseParts.find((p) => p.id === m.tag);
+  if (!host) return [];
+  return Array.from({ length: Math.min(m.qty, 2) }, (_, n) => ({
+    id: m.qty > 1 ? `M-${m.tag}-${n + 1}` : `M-${m.tag}`,
+    label: `${m.kw} kW motor · ${m.starter} · ${m.cable}`,
+    kind: "motor" as const,
+    area: m.area,
+    x: host.x + host.w / 2 + 1.6 + n * 1.4,
+    z: host.z,
+    w: 1.2,
+    d: 1.2,
+    h: 1.0,
+    zone: (host.zone ?? "Zone 2") as Zone,
+    color: partColors.motor,
+    designCode: `IEC 60034 · ${m.volts} V · ${m.breaker} A`,
+    makeBuy: "buy" as const,
+  }));
+});
+
+/** Insulation is a translucent sleeve over the insulated run or shell. */
+const insulationParts: PlantPart[] = pipeLines
+  .filter((l) => l.insulation_mm > 0)
+  .map((l, i) => {
+    const od = outsideDiameter(l.nps) / 1000;
+    const t = (2 * l.insulation_mm) / 1000;
+    const lane = pipeLines.findIndex((x) => x.lineNo === l.lineNo) % 3;
+    const level = Math.floor(pipeLines.findIndex((x) => x.lineNo === l.lineNo) / 3) % 3;
+    return {
+      id: `INS-${l.lineNo.split("-")[1]}-${i + 1}`,
+      label: `Insulation ${l.insulation_mm} mm on ${l.lineNo}`,
+      kind: "insulation" as const,
+      area: l.area,
+      x: 0,
+      z: RACK_Z + lane * 1.4 - 1.4,
+      y0: RACK_Y + level * 0.7,
+      w: 96,
+      d: od + t,
+      h: od + t,
+      zone: l.zone,
+      color: partColors.insulation,
+      designCode: "ME-SPE-0014 · rock wool + Al jacketing",
+      makeBuy: "make" as const,
+    };
+  });
+
+/** Pipe racks, sized to carry the runs above. */
+export const rackParts: PlantPart[] = [
+  { id: "PR-1001", label: "Main pipe rack — 96 m, 3 tiers", kind: "pipe-rack", area: "99", x: 0, z: RACK_Z, w: 98, d: 6, h: 6, zone: "Unclassified", color: partColors["pipe-rack"], designCode: "MSS SP-58 · AISC 360", makeBuy: "make" },
+  { id: "PR-1002", label: "Area 30 pipe rack — 34 m", kind: "pipe-rack", area: "30", x: -18, z: -38, w: 34, d: 4, h: 4.5, zone: "Zone 0", color: partColors["pipe-rack"], designCode: "MSS SP-58", makeBuy: "make" },
+  { id: "PR-1003", label: "Area 70 pipe rack — 22 m", kind: "pipe-rack", area: "70", x: 24, z: 33, w: 22, d: 3.5, h: 4, zone: "Zone 2", color: partColors["pipe-rack"], designCode: "MSS SP-58", makeBuy: "make" },
+];
+
+/**
+ * Insulation on equipment shells, from the same ME-SPE-0014 schedule the
+ * insulation page and the MTO read. The sleeve sits 100 mm proud of the shell
+ * on each side so it reads as cladding in 3D, and it is wrapped at the item's
+ * own footprint so the cladded surface in the drawing matches the area in the
+ * schedule.
+ */
+const equipmentInsulationParts: PlantPart[] = insulationItems
+  .filter((i) => i.hostType === "equipment")
+  .flatMap((i) => {
+    const host = baseParts.find((p) => p.id === i.host);
+    if (!host) return [];
+    const t = (2 * i.thickness_mm) / 1000;
+    return [
+      {
+        id: i.tag,
+        label: `${i.thickness_mm} mm ${i.material} on ${host.id} · ${i.area_m2} m²`,
+        kind: "insulation" as const,
+        area: host.area,
+        x: host.x,
+        z: host.z,
+        w: +(host.w + t).toFixed(2),
+        d: +(host.d + t).toFixed(2),
+        h: host.h,
+        zone: host.zone,
+        color: partColors.insulation,
+        designCode: `ME-SPE-0014 · ${i.jacketing} jacketing`,
+        makeBuy: "make" as const,
+      },
+    ];
+  });
+
+/** Electrical field items that are not already in the register. */
+const fieldElectrical: PlantPart[] = [
+  { id: "JB-9901", label: "Junction box — areas 30/40", kind: "electrical", area: "99", x: 44, z: 14, w: 1.2, d: 0.8, h: 1.6, zone: "Unclassified", color: partColors.electrical, designCode: "IEC 60079-7 · Ex e", makeBuy: "buy" },
+  { id: "JB-9902", label: "Junction box — areas 70/80", kind: "electrical", area: "99", x: 38, z: 30, w: 1.2, d: 0.8, h: 1.6, zone: "Zone 2", color: partColors.electrical, designCode: "IEC 60079-7 · Ex e", makeBuy: "buy" },
+  { id: "LP-9901", label: "Lighting pole — 12 m high mast", kind: "lightning", area: "99", x: -28, z: -40, w: 1, d: 1, h: 12, zone: "Unclassified", color: partColors.lightning, designCode: "IEC 60598-2-5", makeBuy: "buy" },
+  { id: "LP-9902", label: "Lighting pole — 12 m high mast", kind: "lightning", area: "99", x: 36, z: 40, w: 1, d: 1, h: 12, zone: "Unclassified", color: partColors.lightning, designCode: "IEC 60598-2-5", makeBuy: "buy" },
+];
+
+/** Everything on the plot: register items plus the bulk disciplines. */
+export const parts: PlantPart[] = [
+  ...baseParts,
+  ...rackParts,
+  ...pipeParts,
+  ...insulationParts,
+  ...equipmentInsulationParts,
+  ...valveParts,
+  ...instrumentParts,
+  ...motorParts,
+  ...fieldElectrical,
+];
+
+/**
+ * Linear and surface items do not consume area: a 96 m pipe run or an
+ * instrument stand would otherwise swamp the envelope schedule and make the
+ * area blocks overlap. Area envelopes are built from the physical equipment only.
+ */
+const AREA_ITEMS_EXCLUDED = new Set<PartKind>(["pipe", "insulation", "valve", "instrument"]);
+export const areaItems = parts.filter((p) => !AREA_ITEMS_EXCLUDED.has(p.kind));
+
+/** Counts per discipline, used by the model page and the make/buy summary. */
+export const partCounts = (() => {
+  const byKind: Record<string, number> = {};
+  for (const p of parts) byKind[p.kind] = (byKind[p.kind] ?? 0) + 1;
+  return {
+    total: parts.length,
+    equipment: parts.filter((p) => !AREA_ITEMS_EXCLUDED.has(p.kind)).length,
+    piping: pipeParts.length,
+    valves: valveParts.length,
+    instruments: instrumentParts.length,
+    motors: motorParts.length,
+    insulation: insulationParts.length + equipmentInsulationParts.length,
+    racks: rackParts.length,
+    rackLength_m: +rackParts.reduce((a, p) => a + p.w, 0).toFixed(0),
+    byKind,
+  };
+})();
+
 /** Footprint of a single item, m². */
 export const foot = (p: { w: number; d: number }): number => +(p.w * p.d).toFixed(1);
 
@@ -206,9 +446,9 @@ const BLOCK_PAD = 3;
  * schedule labels them as such.
  */
 export const areaBlocks: AreaBlock[] = (() => {
-  const codes = [...new Set(parts.map((p) => p.area))].sort();
+  const codes = [...new Set(areaItems.map((p) => p.area))].sort();
   return codes.map((code) => {
-    const items = parts.filter((p) => p.area === code);
+    const items = areaItems.filter((p) => p.area === code);
     const x0 = Math.min(...items.map((p) => p.x - p.w / 2)) - BLOCK_PAD;
     const x1 = Math.max(...items.map((p) => p.x + p.w / 2)) + BLOCK_PAD;
     const z0 = Math.min(...items.map((p) => p.z - p.d / 2)) - BLOCK_PAD;
@@ -235,7 +475,7 @@ export const blockAreaTotal_m2 = +areaBlocks.reduce((a, b) => a + b.area_m2, 0).
 
 /** Area schedule row for a register area: what is physically built there. */
 export const equipmentFootprint_m2 = (code: string): number =>
-  +parts
+  +areaItems
     .filter((p) => p.area === code)
     .reduce((a, p) => a + p.w * p.d, 0)
     .toFixed(1);

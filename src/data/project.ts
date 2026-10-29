@@ -154,6 +154,15 @@ export const hazardousArea = {
   designAmbientForEx: "55 °C site ambient — Ex rating must be valid at the T-class applied",
 };
 
+export type DocDiscipline =
+  | "Contract"
+  | "Mechanical"
+  | "Piping"
+  | "Electrical & instruments"
+  | "Safety"
+  | "Procurement"
+  | "Quality";
+
 export interface DocumentRef {
   docNo: string;
   title: string;
@@ -161,6 +170,9 @@ export interface DocumentRef {
   status: string;
   pages: number;
   role: string;
+  discipline: DocDiscipline;
+  /** What of the document is actually applied in this dossier. */
+  applied: string;
 }
 
 export const documentRegister: DocumentRef[] = [
@@ -171,6 +183,8 @@ export const documentRegister: DocumentRef[] = [
     status: "Issued for Procurement, 11-Jul-2026",
     pages: 11,
     role: "Scope of supply, inlet/outlet battery limits, package technical requirements",
+    discipline: "Contract",
+    applied: "Battery limits, 500 m³/h design flow, outlet limits for Options 1–3, execution basis",
   },
   {
     docNo: "B047-ABG-99-ME-BOD-0001",
@@ -179,6 +193,8 @@ export const documentRegister: DocumentRef[] = [
     status: "Issued for Construction, 12-Mar-2026",
     pages: 8,
     role: "ASME VIII Div.1 / API 650 basis, shell thickness rule, supports, PWHT, MDMT",
+    discipline: "Mechanical",
+    applied: "Shell and head thickness, structural minimum D/1000 + 2.54 mm, wind and seismic cases, 20-year life",
   },
   {
     docNo: "B047-ABG-99-ME-BOD-0002",
@@ -187,6 +203,68 @@ export const documentRegister: DocumentRef[] = [
     status: "Issued for Construction, 31-Mar-2026",
     pages: 11,
     role: "API 610/675/673/661/671/611/612 criteria, motor margins, NPSH rule, ITP",
+    discipline: "Mechanical",
+    applied: "Pump and mixer selection, motor margin, NPSH check, seal plan, vibration limits",
+  },
+  {
+    docNo: "B047-ABG-99-PP-BOD-0001",
+    title: "Piping Design Basis",
+    rev: "A",
+    status: "Issued for Construction (MRC submitted)",
+    pages: 24,
+    role: "ASME B31.3 process piping, NACE MR0103 sour service, routing and support criteria",
+    discipline: "Piping",
+    applied: "Line sizing basis, wall-thickness calculation, support spacing, hydrotest and NDE requirements",
+  },
+  {
+    docNo: "B047-ABG-99-PP-SPE-0002",
+    title: "Piping Material Specification",
+    rev: "2",
+    status: "Issued for Construction (MRC submitted)",
+    pages: 96,
+    role: "Pipe classes COFA/COFB/CPFA/ROFA/NOAA/BOAA/NOAB/CRFC, materials, valves, gaskets, bolting",
+    discipline: "Piping",
+    applied: "Every line carries a class from this specification; valve and gasket selection follows the class",
+  },
+  {
+    docNo: "B047-ABG-99-EL-BOD-0001",
+    title: "Electrical Design Basis",
+    rev: "0",
+    status: "Issued",
+    pages: 38,
+    role: "MV/LV distribution, IEC 60034 motors, IEC 60079 hazardous areas, earthing and lightning",
+    discipline: "Electrical & instruments",
+    applied: "Transformer and MCC sizing, motor feeders and cable schedule, tray fill, earthing and lightning protection",
+  },
+  {
+    docNo: "B047-ABG-99-IC-BOD-0001",
+    title: "Instrument Design Basis",
+    rev: "1",
+    status: "Issued",
+    pages: 32,
+    role: "Instrument selection, 4–20 mA HART signals, SIL classification, I/O and control philosophy",
+    discipline: "Electrical & instruments",
+    applied: "Instrument index, I/O count and spare capacity, SIL 2 loops, hazardous-area certification",
+  },
+  {
+    docNo: "B047-ABG-99-ME-SPE-0014",
+    title: "Specification for Insulation",
+    rev: "0",
+    status: "Issued",
+    pages: 14,
+    role: "Insulation materials, thickness by service temperature, jacketing, application and inspection",
+    discipline: "Mechanical",
+    applied: "Insulation schedule, thickness selection, aluminium jacketing, heat-loss and surface-temperature checks",
+  },
+  {
+    docNo: "2024B047-ABG-DIW-45-QC-SPC-001",
+    title: "Specification for Painting and Protective Coating",
+    rev: "0",
+    status: "Issued",
+    pages: 18,
+    role: "Surface preparation, coating systems, DFT limits, inspection and repair",
+    discipline: "Quality",
+    applied: "Coating system selection, blast grade, DFT and paint areas carried into the MTO",
   },
   {
     docNo: "B047-ABG-03-PR-LAY-0001",
@@ -195,6 +273,8 @@ export const documentRegister: DocumentRef[] = [
     status: "Issued for Implementation, 09-Jun-2026",
     pages: 4,
     role: "Zone 0/1/2 boundaries, Note 17 WWT classification, Ex gas group and T-class",
+    discipline: "Safety",
+    applied: "Zone envelope for every item and instrument, Ex certification of field devices, zone colour on drawings",
   },
   {
     docNo: "2024B047-ABG-DIW",
@@ -203,7 +283,26 @@ export const documentRegister: DocumentRef[] = [
     status: "Issued",
     pages: 12,
     role: "Governing / non-governing vendor status, ASME U-stamp rule, RAMSIS listing",
+    discipline: "Procurement",
+    applied: "Governing/non-governing status per package, vendor recommendation where the item is not listed",
   },
+];
+
+/** Documents added after the first issue, with what changed in this dossier. */
+export const documentRegisterSummary = {
+  total: documentRegister.length,
+  disciplines: [...new Set(documentRegister.map((d) => d.discipline))],
+  pages: documentRegister.reduce((a, d) => a + d.pages, 0),
+};
+
+/** Register additions are listed so a reviewer can see what was extended and why. */
+export const documentRegisterAdditions = [
+  { docNo: "B047-ABG-99-PP-BOD-0001", what: "All 20 lines re-based on B31.3 and NACE MR0103; support spacing and hydrotest packs now calculated." },
+  { docNo: "B047-ABG-99-PP-SPE-0002", what: "Line list carries a pipe class per line; valves, gaskets and bolting counted from the class." },
+  { docNo: "B047-ABG-99-EL-BOD-0001", what: "Motor schedule, cable sizes, tray fill, transformer loading, earthing and lightning protection sheets added." },
+  { docNo: "B047-ABG-99-IC-BOD-0001", what: "Instrument index with I/O class and SIL rating; I/O count checked against PLC capacity." },
+  { docNo: "B047-ABG-99-ME-SPE-0014", what: "Insulation schedule by surface, with heat-loss and cladding surface-temperature checks." },
+  { docNo: "2024B047-ABG-DIW-45-QC-SPC-001", what: "Painting system and DFT limits carried into the coating area in the MTO." },
 ];
 
 /** Items where the issued documents contradict each other and a formal

@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Card, SectionTitle, Badge, Callout, nf } from "@/components/ui";
 import {
+  documentRegister,
+  documentRegisterSummary,
+  documentRegisterAdditions,
+} from "@/data/project";
+import {
   firebaseConfigured,
   uploadDocument,
   listDocuments,
@@ -175,13 +180,76 @@ export default function DocumentsPage() {
       </div>
 
       <Card className="overflow-hidden">
+        <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
+          <h3 className="text-[12.5px] font-semibold text-mist-200">Issued document register</h3>
+          <span className="font-mono text-[10px] text-mist-400">
+            {documentRegisterSummary.total} docs · {documentRegisterSummary.pages} pp ·{" "}
+            {documentRegisterSummary.disciplines.length} disciplines
+          </span>
+        </div>
+        <div className="scroll-x">
+          <table className="grid-table">
+            <thead>
+              <tr>
+                <th>Document number</th>
+                <th>Title</th>
+                <th>Rev</th>
+                <th>Discipline</th>
+                <th className="text-right">Pages</th>
+                <th>Applied in this dossier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {documentRegister.map((d) => (
+                <tr key={d.docNo}>
+                  <td className="whitespace-nowrap font-mono text-[10.5px] text-teal-300">{d.docNo}</td>
+                  <td className="min-w-[190px] text-mist-300">{d.title}</td>
+                  <td className="num">{d.rev}</td>
+                  <td>
+                    <Badge
+                      tone={
+                        d.discipline === "Piping"
+                          ? "teal"
+                          : d.discipline === "Electrical & instruments"
+                            ? "violet"
+                            : d.discipline === "Quality"
+                              ? "amber"
+                              : "slate"
+                      }
+                    >
+                      {d.discipline}
+                    </Badge>
+                  </td>
+                  <td className="num">{d.pages}</td>
+                  <td className="min-w-[240px] text-[10.5px] leading-relaxed text-mist-400">{d.applied}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="text-[12.5px] font-semibold text-mist-200">Recent register additions</h3>
+        <div className="mt-2 space-y-1.5">
+          {documentRegisterAdditions.map((a) => (
+            <div key={a.docNo} className="grid gap-1 border-b border-line/60 pb-1.5 md:grid-cols-[220px_1fr]">
+              <span className="font-mono text-[10.5px] text-teal-300">{a.docNo}</span>
+              <span className="text-[11px] leading-relaxed text-mist-400">{a.what}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden">
         <div className="border-b border-line px-4 py-2.5">
           <h3 className="text-[12.5px] font-semibold text-mist-200">Files</h3>
         </div>
         {docs.length === 0 ? (
           <div className="px-4 py-8 text-center text-[11.5px] text-mist-400">
-            No files yet. The five issued documents are already summarised on the design basis page; upload the
-            native PDFs here to keep the transmittals together.
+            No files yet. The {documentRegisterSummary.total} issued documents are already summarised in the
+            register below and on the design basis page; upload the native PDFs here to keep the transmittals
+            together.
           </div>
         ) : (
           <table className="grid-table">

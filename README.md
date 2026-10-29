@@ -17,19 +17,31 @@ Refinery Expansion Project, prepared for **RAMSIS Engineering (Bahrain)** agains
 | --- | --- |
 | `/` | Project overview, four discharge options, headline findings |
 | `/basis` | Site data, code basis, inlet/outlet battery limits, HAC, 8 clarifications |
-| `/calculations` | 18 calculation sheets with formula, substitution, result and pass/fail check |
+| `/calculations` | 27 calculation sheets — process, mechanical, rotating, piping, instruments, electrical, insulation and rack steel — each with formula, substitution, result and pass/fail check |
 | `/equipment` | Full equipment register — duty, material, code, zone, Ex rating, power, lead time |
 | `/make-buy` | RAMSIS capability assessment and item-by-item make/buy decision with reasoning |
 | `/mto` | Plate and section take-off, weld length, manhours, workshop cost build-up |
 | `/procurement` | Governing vendors plus recommendations for every category the AVL omits |
 | `/estimate` | Capex by line item, opex by driver, 20-year life-cycle cost |
-| `/model` | Parametric 3D plant model with hazardous-area overlay |
+| `/model` | Parametric 3D plant model with hazardous-area overlay — equipment, pipe runs, valves, instruments, motors, insulation and pipe racks, plus a 3D view of every item |
 | `/assistant` | Gemini assistant grounded in the dossier |
 | `/documents` | Firebase-backed document vault and review comment trail |
 
 All engineering numbers are computed in `src/lib/calc/` from the process assumptions. Nothing on the
 equipment, MTO or estimate pages is typed in by hand, so changing a process input propagates through
 the register, the take-off and the cost.
+
+The bulk disciplines have their own data modules, and the calculations, the MTO, the make/buy split
+and the 3D model all read from them — one edit to a line length, a valve or a cable size moves every
+page at once:
+
+| Module | Holds |
+| --- | --- |
+| `src/lib/piping.ts` | 20-line line list with pipe class, schedule, design T/P, insulation, valves; bulk take-off by size and class |
+| `src/lib/instruments.ts` | Instrument index with I/O type, SIL, Ex rating and governing vendor; I/O count against the 1,100-point PCS |
+| `src/lib/electrical.ts` | Motor schedule from the equipment register, feeder selection on ampacity and volt drop, tray fill, transformer loading |
+| `src/lib/insulation.ts` | Insulation schedule by service temperature, jacketing and mass, plus bare piping paint area |
+| `src/lib/calc/bulk.ts` | The nine bulk calculation sheets (P-01…P-04, I-01, E-01, E-02, IN-01, S-01) |
 
 ## Run it
 

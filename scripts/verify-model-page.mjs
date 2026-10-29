@@ -63,7 +63,14 @@ page.on("console", (m) => {
   if (m.type() === "error") problems.push(`console.error: ${m.text()}`);
 });
 page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
-page.on("requestfailed", (r) => problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`));
+page.on("requestfailed", (r) => {
+  // Next.js prefetches every nav link; those in-flight RSC fetches are aborted
+  // when the page settles, which is not an error.
+  const aborted = r.failure()?.errorText === "net::ERR_ABORTED";
+  const prefetch = r.headers()["next-router-prefetch"] === "1" || r.url().includes("_rsc=");
+  if (aborted && prefetch) return;
+  problems.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`);
+});
 
 const url = `http://localhost:${PORT}${PREFIX}/model/`;
 const resp = await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
@@ -71,6 +78,9 @@ const title = await page.title();
 const bodyText = await page.textContent("body");
 const canvases = await page.locator("canvas").count();
 const notLoaded = bodyText?.includes("This page couldn") ?? false;
+
+await page.waitForTimeout(4000);
+await page.screenshot({ path: "artifacts/model-page.png", fullPage: false });
 
 console.log(JSON.stringify({ url, status: resp?.status(), title, canvases, errorPage: notLoaded, problems }, null, 2));
 

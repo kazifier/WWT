@@ -36,8 +36,27 @@ the register, the take-off and the cost.
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build    # production build
+npm run build    # production build (server build, used by Freebuff Sites)
 npx tsc --noEmit # type check
+```
+
+## Two deployments from one codebase
+
+| Target | Build | Notes |
+| --- | --- | --- |
+| Freebuff Sites | `npm run build` | Server build packaged for Workers via OpenNext; `/api/ai/chat` stays dynamic. |
+| GitHub Pages | `npm run build:pages` | Static export with `basePath` `/WWT` and `trailingSlash`, copied to the repository root by `scripts/publish-pages.mjs`. |
+
+The GitHub Pages build needs one extra file that the script writes for you: `.nojekyll`. Without it
+GitHub runs Jekyll, which drops every `_`-prefixed directory — including `_next/` — and the site loads
+with no CSS or JavaScript. Pages source is **main / (root)**.
+
+3D views are wrapped in `CanvasBoundary`, so a browser without WebGL shows a notice in the drawing area
+instead of failing the whole page. Two checks are available:
+
+```bash
+node scripts/verify-model-page.mjs   # serves out/ under /WWT and drives /model in headless Chromium
+node scripts/live-check.mjs          # same check against the two deployed URLs
 ```
 
 ## Configure Gemini

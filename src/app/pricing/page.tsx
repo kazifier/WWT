@@ -803,7 +803,7 @@ export default function PricingPage() {
                     <th className="text-right">Qty</th>
                     <th className="text-right">t / ea</th>
                     <th>Basis</th>
-                    <th className="text-right">USD/t or lump</th>
+                    <TH className="text-right">USD/t or lump</TH>
                     <TH className="text-right">Register</TH>
                     <TH className="text-right">Workshop</TH>
                     <TH className="text-right">USD/t</TH>

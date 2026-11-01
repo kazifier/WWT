@@ -57,14 +57,35 @@ const manualBadge = await page
   .locator("span", { hasText: "manual" })
   .count();
 
-// 3. client view still hides every amount on the page
+// 3. the currency switch converts every amount at the 0.376 peg
+const grandUsd = ((await page.locator("div", { hasText: "Total, manual pricing" }).last().textContent()) ?? "")
+  .replace(/\s+/g, " ")
+  .trim();
+await page.getByRole("button", { name: "BHD", exact: true }).click();
+await page.waitForTimeout(250);
+const grandBhd = ((await page.locator("div", { hasText: "Total, manual pricing" }).last().textContent()) ?? "")
+  .replace(/\s+/g, " ")
+  .trim();
+await page.screenshot({ path: "artifacts/pricing-bhd.png" });
+await page.getByRole("button", { name: "USD", exact: true }).click();
+await page.waitForTimeout(200);
+
+// 4. client view still hides every amount on the page
 await page.getByRole("button", { name: "External (client)" }).click();
 await page.waitForTimeout(250);
 const external = await read();
 
 console.log(
   JSON.stringify(
-    { url, errors, internal, off, external, override: { lineNo, before, after, manualBadge } },
+    {
+      url,
+      errors,
+      internal,
+      off,
+      external,
+      override: { lineNo, before, after, manualBadge },
+      currency: { grandUsd, grandBhd },
+    },
     null,
     2,
   ),

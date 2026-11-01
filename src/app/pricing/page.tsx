@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Badge, Callout, Card, SectionTitle, nf, usd } from "@/components/ui";
+import { Badge, Callout, Card, SectionTitle, nf } from "@/components/ui";
 import { ExternalNote, useViewMode } from "@/components/view-mode";
+import { BHD_PER_USD, useCurrency, useMoney } from "@/components/currency";
 import {
   ACTUATORS,
   DEFAULT_RATES,
@@ -11,6 +12,8 @@ import {
   VALVE_TYPES,
   mergeRates,
   priceProject,
+  type MakeBasis,
+  type MakeOverride,
   type RateCard,
 } from "@/lib/calc/manual-pricing";
 import { pipingSummary, valveTotals } from "@/lib/piping";
@@ -31,7 +34,10 @@ type NumKey =
   | "buy_handling_pct"
   | "make_transport_per_t"
   | "make_insurance_pct"
-  | "make_handling_pct";
+  | "make_handling_pct"
+  | "make_escalation_pct"
+  | "make_margin_pct"
+  | "make_freight_pct";
 
 type MapKey = "pipe_per_m" | "flange_each" | "valve_each" | "actuator_adder" | "insulation_per_m2";
 
@@ -76,8 +82,11 @@ const TD = ({
 
 export default function PricingPage() {
   const { isInternal } = useViewMode();
+  const { usd } = useMoney();
+  const { currency } = useCurrency();
   const [rates, setRates] = useState<RateCard>(DEFAULT_RATES);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [makeOv, setMakeOv] = useState<Record<string, MakeOverride>>({});
   const [enabled, setEnabled] = useState(true);
   const [ready, setReady] = useState(false);
 
@@ -88,6 +97,8 @@ export default function PricingPage() {
         const parsed = JSON.parse(raw);
         setRates(mergeRates(parsed.rates));
         if (parsed.overrides && typeof parsed.overrides === "object") setOverrides(parsed.overrides);
+        if (parsed.makeOverrides && typeof parsed.makeOverrides === "object")
+          setMakeOv(parsed.makeOverrides);
         if (typeof parsed.enabled === "boolean") setEnabled(parsed.enabled);
       }
     } catch {
@@ -99,11 +110,11 @@ export default function PricingPage() {
   useEffect(() => {
     if (!ready) return;
     try {
-      window.localStorage.setItem(KEY, JSON.stringify({ rates, overrides, enabled }));
+      window.localStorage.setItem(KEY, JSON.stringify({ rates, overrides, makeOverrides: makeOv, enabled }));
     } catch {
       /* storage unavailable — the sheet still works for this session */
     }
-  }, [rates, overrides, enabled, ready]);
+  }, [rates, overrides, makeOv, enabled, ready]);
 
   const numericOverrides = useMemo(() => {
     const out: Record<string, number> = {};
@@ -114,11 +125,32 @@ export default function PricingPage() {
     return out;
   }, [overrides]);
 
-  const p = useMemo(() => priceProject(rates, numericOverrides), [rates, numericOverrides]);
+  const p = useMemo(
+    () => priceProject(rates, numericOverrides, makeOv),
+    [rates, numericOverrides, makeOv],
+  );
 
   const setNum = (k: NumKey, v: number) => setRates((prev) => ({ ...prev, [k]: v }));
   const setMap = (k: MapKey, key: string, v: number) =>
     setRates((prev) => ({ ...prev, [k]: { ...prev[k], [key]: v } }));
+
+  /* Ramsis-made items: per-item overrides, cleared by setting the key to undefined. */
+  const patchMake = (tag: string, patch: Partial<MakeOverride>) =>
+    setMakeOv((prev) => ({ ...prev, [tag]: { ...prev[tag], ...patch } }));
+
+  const clearMake = (tag: string) =>
+    setMakeOv((prev) => {
+      const next = { ...prev };
+      delete next[tag];
+      return next;
+    });
+
+  const makeWorkshop = p.made.reduce((a, m) => a + m.landed.workshop, 0);
+  const makeFreight = p.made.reduce((a, m) => a + m.landed.transport, 0);
+  const makeInsurance = p.made.reduce((a, m) => a + m.landed.insurance, 0);
+  const makeHandling = p.made.reduce((a, m) => a + m.landed.handling, 0);
+  const makeTonnes = p.made.reduce((a, m) => a + m.landed.tonnes, 0);
+  const makeRegister = p.made.reduce((a, m) => a + m.landed.register, 0);
 
   const lineSum = (f: (l: (typeof p.lines)[number]) => number) => p.lines.reduce((a, l) => a + f(l), 0);
 
@@ -128,7 +160,12 @@ export default function PricingPage() {
         Every line item priced from the design quantity, at rates you can overwrite — pipe by the metre,
         fittings and pipe by the tonne, flanges, gaskets and bolts by the piece, valves by type and size,
         insulation and painting by the square metre. Purchases carry freight, insurance, customs duty and
-        handling to Diwanya; Ramsis-made items carry the transport out of the Bahrain workshop.
+        handling to Diwanya; Ramsis-made items are built up in the workshop, escalated, marked up, then carried
+        to site. Every Ramsis-made item can be priced on its register cost, on a USD/t rate of your own or as a
+        lump sum, with its own weight and freight.
+        <br />
+        <br />
+        Everything is entered in USD and can be read in USD or BHD with the switch in the header.
         Rates live in this browser only, so a number you change here never alters the design or the AACE
         estimate — it is an independent check on them.
       </SectionTitle>
@@ -158,7 +195,12 @@ export default function PricingPage() {
           Reset rates and overrides
         </button>
         <span className="font-mono text-[10.5px] text-mist-400">
-          {p.lines.length} pipe lines · {valveTotals.qty} valves · {insulationSummary.items} insulated items
+          {p.lines.length} pipe lines · {valveTotals.qty} valves · {insulationSummary.items} insulated items ·{" "}
+          {p.made.length} Ramsis-made items
+        </span>
+        <span className="font-mono text-[10.5px] text-mist-400">
+          Showing {currency}
+          {currency === "BHD" && ` at ${BHD_PER_USD} BHD / USD`} — every rate and override is entered in USD
         </span>
       </div>
 
@@ -311,14 +353,14 @@ export default function PricingPage() {
 
             <Card className="p-4">
               <h3 className="text-[12.5px] font-semibold text-mist-200">
-                Ramsis-made items — Bahrain workshop to Diwanya
+                Ramsis-made items — workshop build-up and delivery
               </h3>
-              <div className="mt-3 grid grid-cols-3 gap-x-4 gap-y-2">
+
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
                 {(
                   [
-                    ["Transport USD/t", "make_transport_per_t"],
-                    ["Insurance %", "make_insurance_pct"],
-                    ["Site handling %", "make_handling_pct"],
+                    ["Escalation %", "make_escalation_pct"],
+                    ["Workshop margin %", "make_margin_pct"],
                   ] as [string, NumKey][]
                 ).map(([label, k]) => (
                   <label key={k} className="flex flex-col gap-1">
@@ -327,10 +369,63 @@ export default function PricingPage() {
                   </label>
                 ))}
               </div>
+
+              <div className="mt-3 flex items-center justify-between border-t border-line/70 pt-3">
+                <span className="text-[10px] uppercase tracking-wide text-mist-400">Freight basis</span>
+                <div className="flex items-center gap-0.5 rounded border border-line bg-ink-900/80 p-0.5">
+                  {(
+                    [
+                      ["per_t", "By weight"],
+                      ["pct", "% of value"],
+                    ] as ["per_t" | "pct", string][]
+                  ).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={rates.make_transport_basis === mode}
+                      onClick={() => setRates((prev) => ({ ...prev, make_transport_basis: mode }))}
+                      className={`rounded px-2 py-[3px] text-[10px] font-semibold uppercase tracking-[0.06em] transition-colors ${
+                        rates.make_transport_basis === mode
+                          ? "bg-teal-500/20 text-teal-200"
+                          : "text-mist-400 hover:text-mist-200"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+                {(
+                  [
+                    ["Transport USD/t", "make_transport_per_t"],
+                    ["Freight % of value", "make_freight_pct"],
+                    ["Insurance %", "make_insurance_pct"],
+                    ["Site handling %", "make_handling_pct"],
+                  ] as [string, NumKey][]
+                ).map(([label, k]) => (
+                  <label
+                    key={k}
+                    className={`flex flex-col gap-1 ${
+                      (k === "make_transport_per_t" && rates.make_transport_basis === "pct") ||
+                      (k === "make_freight_pct" && rates.make_transport_basis === "per_t")
+                        ? "opacity-40"
+                        : ""
+                    }`}
+                  >
+                    <span className="text-[10.5px] text-mist-400">{label}</span>
+                    <RateInput width="w-full" value={rates[k]} onChange={(v) => setNum(k, v)} />
+                  </label>
+                ))}
+              </div>
+
               <p className="mt-3 text-[10.5px] leading-relaxed text-mist-400">
-                Transport covers sea freight Bahrain → Umm Qasr and the inland leg to Diwanya, by weight of
-                fabricated steel. Customs duty on Ramsis supply is assumed nil as contractor-furnished plant
-                under the RFQ delivery terms.
+                The build-up runs in this order: workshop cost, escalated to the bid date, then marked up for
+                overhead and margin; freight by weight or as a share of the value; insurance and site handling
+                on the workshop value. Transport covers sea freight Bahrain → Umm Qasr and the inland leg to
+                Diwanya. Customs duty on Ramsis supply is assumed nil as contractor-furnished plant under the
+                RFQ delivery terms.
               </p>
             </Card>
           </div>
@@ -356,7 +451,7 @@ export default function PricingPage() {
                     <th>Class</th>
                     <th className="text-right">Size</th>
                     <th className="text-right">Length m</th>
-                    <TH className="text-right">Pipe $/m</TH>
+                    <TH className="text-right">Pipe rate /m</TH>
                     <TH className="text-right">Pipe</TH>
                     <TH className="text-right">Fittings</TH>
                     <TH className="text-right">Flanges</TH>
@@ -465,7 +560,7 @@ export default function PricingPage() {
                     <th>Type</th>
                     <th className="text-right">Qty</th>
                     <th className="text-right">Actuated</th>
-                    <TH className="text-right">Avg USD/ea</TH>
+                    <TH className="text-right">Avg rate</TH>
                     <TH className="text-right">Value</TH>
                   </tr>
                 </thead>
@@ -682,10 +777,22 @@ export default function PricingPage() {
           </Card>
 
           <Card className="overflow-hidden">
-            <div className="border-b border-line px-4 py-2.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
               <h3 className="text-[12.5px] font-semibold text-mist-200">
-                Made in Bahrain — workshop cost plus transport to Diwanya
+                Made in Bahrain — per-item build-up and delivery
               </h3>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-mist-400">
+                  {p.made.length} items · {nf(makeTonnes, 1)} t · blended {usd(makeTonnes > 0 ? makeWorkshop / makeTonnes : 0)}/t
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMakeOv({})}
+                  className="rounded border border-line bg-ink-900 px-2 py-1 text-[10px] text-mist-400 transition-colors hover:text-mist-200"
+                >
+                  Reset all
+                </button>
+              </div>
             </div>
             <div className="scroll-x">
               <table className="grid-table">
@@ -694,42 +801,178 @@ export default function PricingPage() {
                     <th>Tag</th>
                     <th>Description</th>
                     <th className="text-right">Qty</th>
-                    <th className="text-right">t</th>
+                    <th className="text-right">t / ea</th>
+                    <th>Basis</th>
+                    <th className="text-right">USD/t or lump</th>
+                    <TH className="text-right">Register</TH>
                     <TH className="text-right">Workshop</TH>
-                    <TH className="text-right">Transport</TH>
-                    <TH className="text-right">Insurance</TH>
-                    <TH className="text-right">Handling</TH>
+                    <TH className="text-right">USD/t</TH>
+                    <TH className="text-right">Freight</TH>
                     <TH className="text-right">Delivered</TH>
+                    <TH className="text-right">Δ register</TH>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {p.made.map((m) => (
-                    <tr key={m.tag}>
-                      <td className="whitespace-nowrap font-mono text-[10.5px] text-teal-300">{m.tag}</td>
-                      <td className="min-w-[210px] text-mist-300">{m.description}</td>
-                      <td className="num">{m.qty}</td>
-                      <td className="num">{nf(m.tonnes, 1)}</td>
-                      <TD>{usd(m.landed.workshop)}</TD>
-                      <TD className="text-mist-400">{usd(m.landed.transport)}</TD>
-                      <TD className="text-mist-400">{usd(m.landed.insurance)}</TD>
-                      <TD className="text-mist-400">{usd(m.landed.handling)}</TD>
-                      <TD className="font-semibold text-teal-300">{usd(m.landed.delivered)}</TD>
-                    </tr>
-                  ))}
+                  {p.made.map((m) => {
+                    const ov = makeOv[m.tag] ?? {};
+                    const basis = ov.basis ?? "register";
+                    const implied = m.tonnes > 0 ? Math.round(m.landed.register / m.tonnes) : 0;
+                    const cell =
+                      "w-[84px] rounded border border-line bg-ink-900 px-1.5 py-1 text-right font-mono text-[11px] text-mist-200 placeholder:text-mist-400/60 focus:border-teal-500 focus:outline-none";
+                    return (
+                      <tr key={m.tag}>
+                        <td className="whitespace-nowrap font-mono text-[10.5px] text-teal-300">{m.tag}</td>
+                        <td className="min-w-[210px] text-mist-300">{m.description}</td>
+                        <td className="num">{m.qty}</td>
+                        <td>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            aria-label={`${m.tag} weight per unit, tonnes`}
+                            value={ov.tonnes ?? ""}
+                            placeholder={nf(m.weight_t, 1)}
+                            onChange={(e) =>
+                              patchMake(m.tag, {
+                                tonnes: e.target.value === "" ? undefined : Number(e.target.value),
+                              })
+                            }
+                            className={`${cell} w-[70px]`}
+                          />
+                        </td>
+                        <td>
+                          <select
+                            aria-label={`${m.tag} pricing basis`}
+                            value={basis}
+                            onChange={(e) => patchMake(m.tag, { basis: e.target.value as MakeBasis })}
+                            className="rounded border border-line bg-ink-900 px-1.5 py-1 font-mono text-[10.5px] text-mist-200 focus:border-teal-500 focus:outline-none"
+                          >
+                            <option value="register">Register</option>
+                            <option value="per_t">USD / t</option>
+                            <option value="lump">Lump sum</option>
+                          </select>
+                        </td>
+                        <TD>
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            disabled={basis === "register"}
+                            aria-label={`${m.tag} ${basis === "lump" ? "lump sum" : "rate per tonne"} in USD`}
+                            value={ov.value ?? ""}
+                            placeholder={
+                              basis === "per_t"
+                                ? nf(implied, 0)
+                                : basis === "lump"
+                                  ? nf(m.landed.register, 0)
+                                  : "—"
+                            }
+                            onChange={(e) =>
+                              patchMake(m.tag, {
+                                value: e.target.value === "" ? undefined : Number(e.target.value),
+                              })
+                            }
+                            className={`${cell} disabled:opacity-30`}
+                          />
+                        </TD>
+                        <TD className="text-mist-400">{usd(m.landed.register)}</TD>
+                        <TD className="font-semibold text-mist-200">
+                          {usd(m.landed.workshop)}
+                          {m.landed.manual && (
+                            <span className="ml-1 rounded bg-amber-l/15 px-1 text-[9px] uppercase text-amber-l">
+                              manual
+                            </span>
+                          )}
+                        </TD>
+                        <TD className="text-mist-400">{nf(m.landed.unit_rate, 0)}</TD>
+                        <TD>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className="font-mono text-[11px] text-mist-400">
+                              {usd(m.landed.transport)}
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              aria-label={`${m.tag} freight override in USD`}
+                              value={ov.transport ?? ""}
+                              placeholder="auto"
+                              onChange={(e) =>
+                                patchMake(m.tag, {
+                                  transport: e.target.value === "" ? undefined : Number(e.target.value),
+                                })
+                              }
+                              className={`${cell} w-[72px] text-amber-l`}
+                            />
+                          </div>
+                        </TD>
+                        <TD className="font-semibold text-teal-300">{usd(m.landed.delivered)}</TD>
+                        <TD
+                          className={
+                            m.landed.variance > 0
+                              ? "text-amber-l"
+                              : m.landed.variance < 0
+                                ? "text-emerald-300"
+                                : "text-mist-400"
+                          }
+                        >
+                          {m.landed.variance === 0
+                            ? "—"
+                            : `${m.landed.variance > 0 ? "+" : "−"}${usd(Math.abs(m.landed.variance))}`}
+                        </TD>
+                        <td>
+                          {m.landed.manual && (
+                            <button
+                              type="button"
+                              title="Clear this item's overrides"
+                              onClick={() => clearMake(m.tag)}
+                              className="rounded border border-line px-1 text-[11px] text-mist-400 hover:text-rust"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={3} className="text-right text-[11px] text-mist-400">
-                      {p.made.length} fabricated items
+                    <td colSpan={6} className="text-right text-[11px] text-mist-400">
+                      {p.made.length} fabricated items · {nf(makeTonnes, 1)} t
                     </td>
-                    <td className="num text-mist-200">{nf(p.made.reduce((a, m) => a + m.tonnes, 0), 1)}</td>
-                    <TD className="font-semibold text-mist-200">
-                      {usd(p.made.reduce((a, m) => a + m.landed.workshop, 0))}
-                    </TD>
-                    <TD className="text-mist-200">{usd(p.made.reduce((a, m) => a + m.landed.transport, 0))}</TD>
-                    <TD className="text-mist-200">{usd(p.made.reduce((a, m) => a + m.landed.insurance, 0))}</TD>
-                    <TD className="text-mist-200">{usd(p.made.reduce((a, m) => a + m.landed.handling, 0))}</TD>
+                    <TD className="text-mist-200">{usd(makeRegister)}</TD>
+                    <TD className="font-semibold text-mist-200">{usd(makeWorkshop)}</TD>
+                    <TD className="text-mist-200">{nf(makeTonnes > 0 ? makeWorkshop / makeTonnes : 0, 0)}</TD>
+                    <TD className="text-mist-200">{usd(makeFreight)}</TD>
                     <TD className="font-semibold text-teal-300">{usd(p.totals.made)}</TD>
+                    <TD
+                      className={
+                        p.totals.made - makeRegister > 0
+                          ? "text-amber-l"
+                          : p.totals.made - makeRegister < 0
+                            ? "text-emerald-300"
+                            : "text-mist-400"
+                      }
+                    >
+                      {p.totals.made === makeRegister
+                        ? "—"
+                        : `${p.totals.made - makeRegister > 0 ? "+" : "−"}${usd(
+                            Math.abs(p.totals.made - makeRegister),
+                          )}`}
+                    </TD>
+                    <td />
+                  </tr>
+                  <tr>
+                    <td colSpan={13} className="pt-2 text-[10px] leading-relaxed text-mist-400">
+                      <span data-commercial>
+                        Insurance {usd(makeInsurance)} and site handling {usd(makeHandling)} are charged on the
+                        workshop value and already sit inside the delivered column. The register basis reproduces
+                        the equipment register cost; a per-tonne rate or a lump sum is tagged manual, and Δ shows
+                        what it did to the price against the register.
+                      </span>
+                    </td>
                   </tr>
                 </tfoot>
               </table>
@@ -750,6 +993,8 @@ export default function PricingPage() {
                   ["Insulation service", p.totals.insulation],
                   ["Painting service", p.totals.paint],
                   ["Bought-out equipment, delivered", p.totals.bought],
+                  ["Bahrain-made equipment, workshop", makeWorkshop],
+                  ["Bahrain-made freight, insurance and handling", p.totals.made - makeWorkshop],
                   ["Bahrain-made equipment, delivered", p.totals.made],
                 ].map(([k, v]) => (
                   <div
@@ -777,7 +1022,8 @@ export default function PricingPage() {
               engineering and contingency live in the estimate, so the two totals are not comparable line for
               line. Where the two agree, the estimate is safe; where they diverge, the line item that diverged
               is the one to re-quote. Overridden lines are marked <b>manual</b> and keep their own total through
-              the freight, duty and handling chain.
+              the freight, duty and handling chain. The currency switch is display-only: the 0.376 BHD peg is
+              applied as the numbers are written, so nothing you enter, store or export changes when you flip it.
             </Callout>
           </div>
         </section>

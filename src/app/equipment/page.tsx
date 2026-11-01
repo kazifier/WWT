@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, Badge, SectionTitle, usd } from "@/components/ui";
+import { Card, Badge, SectionTitle } from "@/components/ui";
 import { equipment, areas, equipmentSummary } from "@/data/equipment";
 import { useViewMode } from "@/components/view-mode";
+import { useMoney } from "@/components/currency";
 
 export default function EquipmentPage() {
+  const { usd } = useMoney();
   const { isInternal } = useViewMode();
   const [area, setArea] = useState("All");
   const [makeBuy, setMakeBuy] = useState("All");

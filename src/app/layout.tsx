@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import { ViewModeProvider } from "@/components/view-mode";
+import { CurrencyProvider } from "@/components/currency";
 
 export const metadata: Metadata = {
   title: "B047 WWT — Engineering Dossier | RAMSIS Engineering",
@@ -14,16 +15,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen antialiased">
         <ViewModeProvider>
-          <Nav />
-          <main className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
-          <footer className="mt-10 border-t border-line px-4 py-5">
-            <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 text-[10.5px] text-mist-400">
-              <span>
-                RAMSIS Engineering W.L.L., Bahrain · B047 WWT dossier · Rev A (pre-bid)
-              </span>
-              <span className="font-mono">2024B047-MR-0022 Rev B · BOD-0001 Rev 1 · BOD-0002 Rev 0</span>
-            </div>
-          </footer>
+          <CurrencyProvider>
+            <Nav />
+            <main className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
+            <footer className="mt-10 border-t border-line px-4 py-5">
+              <div className="mx-auto flex max-w-[1500px] flex-wrap items-center justify-between gap-2 text-[10.5px] text-mist-400">
+                <span>
+                  RAMSIS Engineering W.L.L., Bahrain · B047 WWT dossier · Rev A (pre-bid)
+                </span>
+                <span className="font-mono">2024B047-MR-0022 Rev B · BOD-0001 Rev 1 · BOD-0002 Rev 0</span>
+              </div>
+            </footer>
+          </CurrencyProvider>
         </ViewModeProvider>
       </body>
     </html>

@@ -72,6 +72,14 @@ export interface RateCard {
   make_transport_per_t: number;
   make_insurance_pct: number;
   make_handling_pct: number;
+  /** Escalation on the register workshop cost from the register date to bid (%). */
+  make_escalation_pct: number;
+  /** Workshop overhead and margin added on top of the escalated cost (%). */
+  make_margin_pct: number;
+  /** Whether Ramsis freight is charged by weight or as a share of the value. */
+  make_transport_basis: "per_t" | "pct";
+  /** Freight as % of workshop value, used when the basis is "pct". */
+  make_freight_pct: number;
 }
 
 /** Every NPS the line list can carry, so a rate can be entered before a line uses it. */
@@ -173,6 +181,10 @@ export const DEFAULT_RATES: RateCard = {
   make_transport_per_t: 165,
   make_insurance_pct: 0.35,
   make_handling_pct: 3,
+  make_escalation_pct: 8,
+  make_margin_pct: 12,
+  make_transport_basis: "per_t",
+  make_freight_pct: 4,
 };
 
 /** Merge a stored card over the defaults so a new size or type is never undefined. */
@@ -356,27 +368,106 @@ export function landBought(r: RateCard, supply: number): Landers {
   };
 }
 
+export type MakeBasis = "register" | "per_t" | "lump";
+
+/**
+ * Per-item control of a Ramsis-made item. The register cost is the default; the
+ * estimator can drive the workshop price off the fabricated weight at a rate of
+ * their own, or enter a lump sum, and can override the weight freight is charged on.
+ */
+export interface MakeOverride {
+  /** Weight per unit, tonnes — replaces the register weight. */
+  tonnes?: number;
+  basis?: MakeBasis;
+  /** USD/t when the basis is per_t; USD total when the basis is lump. */
+  value?: number;
+  /** Freight for the whole item, USD, replacing the calculated charge. */
+  transport?: number;
+}
+
 export interface MakeLanded {
+  basis: MakeBasis;
+  /** Register cost × qty — the benchmark a manual build-up is judged against. */
+  register: number;
+  /** Escalated workshop cost before margin. */
+  cost: number;
+  escalation: number;
+  margin: number;
   workshop: number;
   tonnes: number;
+  /** Workshop price per tonne at the weight actually carried. */
+  unit_rate: number;
   transport: number;
   insurance: number;
   handling: number;
   delivered: number;
+  /** Delivered less the register cost, so a manual entry shows its effect. */
+  variance: number;
+  /** True when anything about the item was entered by hand. */
+  manual: boolean;
 }
 
-/** Bahrain workshop → Diwanya: transport by weight, insurance and site handling. */
-export function landMade(r: RateCard, workshop: number, tonnes: number): MakeLanded {
-  const transport = tonnes * r.make_transport_per_t;
+/**
+ * Bahrain workshop → Diwanya.
+ *
+ * Workshop price: register cost, or weight × rate, or a lump sum — then escalated
+ * to the bid date and marked up for workshop overhead and margin. Freight then
+ * follows either weight or a percentage of the workshop value, with insurance and
+ * site handling charged on the workshop value.
+ */
+export function landMade(
+  r: RateCard,
+  item: { cost_usd: number; weight_t: number; qty: number },
+  ov: MakeOverride = {},
+): MakeLanded {
+  const qty = item.qty;
+  /** A negative weight or rate would invert the build-up, so both are floored at zero. */
+  const tonnes = +Math.max(0, (ov.tonnes ?? item.weight_t) * qty).toFixed(1);
+  const register = Math.max(0, item.cost_usd * qty);
+  const basis = ov.basis ?? "register";
+  /** What the register already implies per tonne — the natural seed for a rate. */
+  const impliedRate = tonnes > 0 ? register / tonnes : 0;
+
+  const raw = Math.max(
+    0,
+    basis === "lump"
+      ? (ov.value ?? register)
+      : basis === "per_t"
+        ? tonnes * (ov.value ?? impliedRate)
+        : register,
+  );
+
+  const escalation = (raw * r.make_escalation_pct) / 100;
+  const cost = raw + escalation;
+  const margin = (cost * r.make_margin_pct) / 100;
+  const workshop = cost + margin;
+
+  const calculatedTransport =
+    r.make_transport_basis === "pct"
+      ? (workshop * r.make_freight_pct) / 100
+      : tonnes * r.make_transport_per_t;
+  const transport =
+    ov.transport != null && ov.transport >= 0 ? ov.transport : Math.max(0, calculatedTransport);
+
   const insurance = (workshop * r.make_insurance_pct) / 100;
   const handling = (workshop * r.make_handling_pct) / 100;
+  const delivered = workshop + transport + insurance + handling;
+
   return {
+    basis,
+    register: Math.round(register),
+    cost: Math.round(cost),
+    escalation: Math.round(escalation),
+    margin: Math.round(margin),
     workshop: Math.round(workshop),
-    tonnes: +tonnes.toFixed(1),
+    tonnes,
+    unit_rate: tonnes > 0 ? Math.round(workshop / tonnes) : 0,
     transport: Math.round(transport),
     insurance: Math.round(insurance),
     handling: Math.round(handling),
-    delivered: Math.round(workshop + transport + insurance + handling),
+    delivered: Math.round(delivered),
+    variance: Math.round(delivered - register),
+    manual: basis !== "register" || ov.tonnes != null || ov.transport != null,
   };
 }
 
@@ -397,6 +488,8 @@ export interface MakePriced {
   tag: string;
   description: string;
   qty: number;
+  /** Register weight per unit, t — what the freight is charged on unless overridden. */
+  weight_t: number;
   tonnes: number;
   landed: MakeLanded;
 }
@@ -455,7 +548,11 @@ export interface PricedProject {
  * entry replaces the calculated supply for the line and then travels through
  * the same freight, insurance, duty and handling chain as any bought material.
  */
-export function priceProject(r: RateCard, overrides: Record<string, number> = {}): PricedProject {
+export function priceProject(
+  r: RateCard,
+  overrides: Record<string, number> = {},
+  makeOverrides: Record<string, MakeOverride> = {},
+): PricedProject {
   const lines = lineTakeoff.map((t) => priceLine(r, t.lineNo, overrides[t.lineNo]));
 
   /* Valves, summarised by type at the price actually charged on the lines. */
@@ -534,13 +631,17 @@ export function priceProject(r: RateCard, overrides: Record<string, number> = {}
 
   const made: MakePriced[] = equipment
     .filter((e) => e.makeBuy === "MAKE")
-    .map((e) => ({
-      tag: e.tag,
-      description: e.description,
-      qty: e.qty,
-      tonnes: +(e.weight_t * e.qty).toFixed(1),
-      landed: landMade(r, e.cost_usd * e.qty, e.weight_t * e.qty),
-    }));
+    .map((e) => {
+      const landed = landMade(r, e, makeOverrides[e.tag] ?? {});
+      return {
+        tag: e.tag,
+        description: e.description,
+        qty: e.qty,
+        weight_t: e.weight_t,
+        tonnes: landed.tonnes,
+        landed,
+      };
+    });
 
   const bulkSupply = lines.reduce((a, l) => a + l.total, 0);
   const bulk = landBought(r, bulkSupply);

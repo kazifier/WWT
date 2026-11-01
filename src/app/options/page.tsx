@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Badge, SectionTitle, Stat, Callout, Bar, nf, usd, money } from "@/components/ui";
+import { Card, Badge, SectionTitle, Stat, Callout, Bar, nf } from "@/components/ui";
 import { useViewMode } from "@/components/view-mode";
+import { useMoney } from "@/components/currency";
 import {
   optionComparisons,
   recommendedOption,
@@ -28,6 +29,7 @@ const TONE: Record<string, "teal" | "amber" | "rust" | "slate" | "green" | "viol
 
 export default function OptionsPage() {
   const { isInternal } = useViewMode();
+  const { usd, money } = useMoney();
   const [detail, setDetail] = useState<OptionComparison["id"]>(recommendedOption.id);
   const order = ranking(isInternal);
   const current = optionComparisons.find((o) => o.id === detail)!;

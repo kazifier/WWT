@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ViewToggle } from "@/components/view-mode";
+import { CurrencyToggle } from "@/components/currency";
 
 const links = [
   { href: "/", label: "Overview" },
@@ -37,6 +38,7 @@ export default function Nav() {
             <span className="hidden md:inline">Diwanya Refinery · Iraq</span>
             <span className="hidden text-ink-600 md:inline">|</span>
             <span className="hidden md:inline">500 m³/h</span>
+            <CurrencyToggle />
             <ViewToggle />
           </div>
         </div>

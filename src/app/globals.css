@@ -111,10 +111,16 @@ table.grid-table tbody tr:hover td {
  * nothing is hidden until the reader deliberately switches to the client view.
  */
 /*
- * The selector is deliberately not anchored on <html>: the pricing sheet turns
- * its own subtree off with a local data-view="external" wrapper, so the two
- * switches — client view in the header, manual pricing on the page — compose.
+ * Hidden by default and revealed only under html[data-view="internal"], which
+ * the provider sets once the PIN has been accepted — so the server-rendered
+ * markup shows no pricing before hydration, not even for a frame.
+ *
+ * The second selector is deliberately not anchored on <html>: the pricing
+ * sheet turns its own subtree off with a local data-view="external" wrapper, so
+ * the two switches — client view in the header, manual pricing on the page —
+ * compose in both directions.
  */
+html:not([data-view="internal"]) [data-commercial],
 [data-view="external"] [data-commercial] {
   display: none !important;
 }
@@ -125,6 +131,7 @@ table.grid-table tbody tr:hover td {
 
 /* Print a copy for a client without accidentally carrying the cost columns. */
 @media print {
+  html:not([data-view="internal"]) [data-commercial],
   [data-view="external"] [data-commercial] {
     display: none !important;
   }

@@ -17,7 +17,7 @@ export default function EquipmentPage() {
         if (area !== "All" && e.area !== area) return false;
         if (makeBuy !== "All" && e.makeBuy !== makeBuy) return false;
         if (q) {
-          const hay = `${e.tag} ${e.description} ${e.vendor} ${e.moc} ${e.type}`.toLowerCase();
+          const hay = `${e.tag} ${e.description} ${e.brief} ${e.vendor} ${e.moc} ${e.type}`.toLowerCase();
           if (!hay.includes(q.toLowerCase())) return false;
         }
         return true;
@@ -31,9 +31,9 @@ export default function EquipmentPage() {
   return (
     <div className="space-y-5">
       <SectionTitle eyebrow="Section 3" title="Equipment register">
-        {equipmentSummary.count} tagged items. Duty, material and code come from the calculation sheets; the
-        hazardous area and Ex rating come from drawing B047-ABG-03-PR-LAY-0001 Rev 4 Note 17. Cost is supply only,
-        FOB vendor works.
+        {equipmentSummary.count} tagged items, each with a line on what it does in the plant. Duty, material and
+        code come from the calculation sheets; the hazardous area and Ex rating come from drawing
+        B047-ABG-03-PR-LAY-0001 Rev 4 Note 17. Cost is supply only, FOB vendor works.
       </SectionTitle>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -109,9 +109,12 @@ export default function EquipmentPage() {
               {rows.map((e) => (
                 <tr key={e.tag}>
                   <td className="whitespace-nowrap font-mono text-[10.5px] text-teal-300">{e.tag}</td>
-                  <td className="min-w-[170px] text-mist-200">
+                  <td className="min-w-[240px] text-mist-200">
                     {e.description}
                     <div className="text-[10px] text-mist-400">{e.type}</div>
+                    <div className="mt-1 max-w-[330px] text-[10.5px] leading-snug text-teal-300/85">
+                      {e.brief}
+                    </div>
                   </td>
                   <td className="min-w-[220px] text-[10.5px] text-mist-400">{e.duty}</td>
                   <td className="num">{e.qty}</td>
